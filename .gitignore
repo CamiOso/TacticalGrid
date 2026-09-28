@@ -27,3 +27,5 @@ Thumbs.db
 # Project-specific
 *.log
 .cache/
+PLAN_20DIAS.md
+APUNTES_*.md

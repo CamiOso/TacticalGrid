@@ -1,6 +1,6 @@
-"""Ejemplos de uso de algoritmos de búsqueda BFS y DFS."""
+"""Ejemplos de uso de algoritmos de búsqueda."""
 
-from src.algorithms.search import bfs, dfs
+from src.algorithms.search import bfs, dfs, ucs, a_star
 
 
 def ejemplo_grafo_simple():
@@ -129,12 +129,151 @@ def ejemplo_sin_solucion():
     print(f"  Nodos explorados: {result_bfs.explored}")
 
 
+def ejemplo_ucs():
+    """Ejemplo 5: UCS con grafo ponderado."""
+    print("\n" + "=" * 60)
+    print("EJEMPLO 5: Búsqueda de Costo Uniforme (UCS)")
+    print("=" * 60)
+
+    graph = {
+        "A": ["B", "C"],
+        "B": ["D", "E"],
+        "C": ["E", "F"],
+        "D": ["G"],
+        "E": ["G"],
+        "F": ["G"],
+        "G": []
+    }
+
+    costs = {
+        ("A", "B"): 2, ("A", "C"): 4,
+        ("B", "D"): 5, ("B", "E"): 10,
+        ("C", "E"): 3, ("C", "F"): 6,
+        ("D", "G"): 4, ("E", "G"): 2, ("F", "G"): 3,
+    }
+
+    print("\nGrafo ponderado (con costos diferentes):")
+    print("  A --2--> B --5--> D --4--> G")
+    print("  A --4--> C --3--> E --2--> G")
+    print("  A --4--> C --6--> F --3--> G")
+
+    result = ucs(graph, "A", "G", costs)
+    print(f"\nUCS (A -> G):")
+    print(f"  Camino: {' -> '.join(result.path)}")
+    print(f"  Costo total: {result.cost}")
+    print(f"  Nodos explorados: {result.explored}")
+    print(f"  (UCS encontró el camino de menor costo acumulado)")
+
+
+def ejemplo_astar():
+    """Ejemplo 6: A* con heurística."""
+    print("\n" + "=" * 60)
+    print("EJEMPLO 6: A* con Heurística Manhattan")
+    print("=" * 60)
+
+    # Cuadrícula 4x4
+    graph = {
+        (0, 0): [(0, 1), (1, 0)],
+        (0, 1): [(0, 0), (0, 2), (1, 1)],
+        (0, 2): [(0, 1), (0, 3), (1, 2)],
+        (0, 3): [(0, 2), (1, 3)],
+        (1, 0): [(0, 0), (1, 1), (2, 0)],
+        (1, 1): [(0, 1), (1, 0), (1, 2), (2, 1)],
+        (1, 2): [(0, 2), (1, 1), (1, 3), (2, 2)],
+        (1, 3): [(0, 3), (1, 2), (2, 3)],
+        (2, 0): [(1, 0), (2, 1), (3, 0)],
+        (2, 1): [(1, 1), (2, 0), (2, 2), (3, 1)],
+        (2, 2): [(1, 2), (2, 1), (2, 3), (3, 2)],
+        (2, 3): [(1, 3), (2, 2), (3, 3)],
+        (3, 0): [(2, 0), (3, 1)],
+        (3, 1): [(2, 1), (3, 0), (3, 2)],
+        (3, 2): [(2, 2), (3, 1), (3, 3)],
+        (3, 3): [(2, 3), (3, 2)],
+    }
+
+    def manhattan(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    start = (0, 0)
+    goal = (3, 3)
+
+    print(f"\nCuadrícula 4x4: {start} -> {goal}")
+
+    result_bfs = bfs(graph, start, goal)
+    result_astar = a_star(graph, start, goal, manhattan)
+
+    print(f"\nBFS (ciego):")
+    print(f"  Movimientos: {result_bfs.cost}")
+    print(f"  Nodos explorados: {result_bfs.explored}")
+
+    print(f"\nA* (con heurística Manhattan):")
+    print(f"  Movimientos: {result_astar.cost}")
+    print(f"  Nodos explorados: {result_astar.explored}")
+    print(f"  Mejora: {result_bfs.explored - result_astar.explored} nodos menos explorados")
+
+
+def ejemplo_astar_vs_ucs():
+    """Ejemplo 7: Comparación A* vs UCS."""
+    print("\n" + "=" * 60)
+    print("EJEMPLO 7: A* vs UCS en Grafo Ponderado")
+    print("=" * 60)
+
+    graph = {
+        "A": ["B", "C"],
+        "B": ["D", "E"],
+        "C": ["E", "F"],
+        "D": ["G"],
+        "E": ["G"],
+        "F": ["G"],
+        "G": []
+    }
+
+    costs = {
+        ("A", "B"): 2, ("A", "C"): 4,
+        ("B", "D"): 5, ("B", "E"): 10,
+        ("C", "E"): 3, ("C", "F"): 6,
+        ("D", "G"): 4, ("E", "G"): 2, ("F", "G"): 3,
+    }
+
+    # Heurística: estimación del costo a G
+    def heuristic_to_g(node, goal):
+        estimates = {
+            "A": 7, "B": 6, "C": 4,
+            "D": 3, "E": 2, "F": 2,
+            "G": 0
+        }
+        return estimates.get(node, 0)
+
+    result_ucs = ucs(graph, "A", "G", costs)
+    result_astar = a_star(graph, "A", "G", heuristic_to_g, costs)
+
+    print(f"\nMismo problema: A -> G")
+
+    print(f"\nUCS (solo costo acumulado):")
+    print(f"  Camino: {' -> '.join(result_ucs.path)}")
+    print(f"  Costo: {result_ucs.cost}")
+    print(f"  Nodos explorados: {result_ucs.explored}")
+
+    print(f"\nA* (costo + heurística):")
+    print(f"  Camino: {' -> '.join(result_astar.path)}")
+    print(f"  Costo: {result_astar.cost}")
+    print(f"  Nodos explorados: {result_astar.explored}")
+
+    if result_astar.explored < result_ucs.explored:
+        print(f"\n✨ A* fue más eficiente: {result_ucs.explored - result_astar.explored} nodos menos")
+    else:
+        print(f"\n✨ A* y UCS encontraron la misma solución con eficiencia similar")
+
+
 if __name__ == "__main__":
     ejemplo_grafo_simple()
     ejemplo_laberinto()
     ejemplo_comparacion()
     ejemplo_sin_solucion()
+    ejemplo_ucs()
+    ejemplo_astar()
+    ejemplo_astar_vs_ucs()
 
     print("\n" + "=" * 60)
-    print("✅ Ejemplos completados")
+    print("✅ Todos los ejemplos completados")
     print("=" * 60)

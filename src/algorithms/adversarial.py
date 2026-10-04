@@ -33,14 +33,47 @@ def minimax(state: dict, depth: int, is_maximizing: bool,
     """
     Algoritmo Minimax para búsqueda adversarial.
 
-    Encuentra el mejor movimiento asumiendo que el adversario juega óptimamente.
+    **Propósito**: Encontrar el mejor movimiento para MAX asumiendo que MIN
+    (el adversario) también juega óptimamente. No hay sorpresas.
+
+    **Estrategia fundamental**:
+    - MAX intenta MAXIMIZAR el valor
+    - MIN intenta MINIMIZAR el valor
+    - Ambos juegan de forma óptima (conocen los valores finales)
+
+    **Información del estado que utiliza**:
+    - Estado actual del juego
+    - Función de evaluación eval_func(estado) para nodos terminales
+    - Función de generación de sucesores get_successors(estado, is_maximizing)
+    - Profundidad actual y máxima permitida
+
+    **Costo Computacional**:
+    - Tiempo: O(b^d) donde b=factor de ramificación, d=profundidad
+    - Espacio: O(b*d) para la pila de recursión
+    - En ajedrez: profundidad 8 = ~10^19 nodos (impracticable)
+
+    **Garantía**: ✓ Encuentra el movimiento ÓPTIMO (teóricamente perfecto)
+    asumiendo que el adversario también juega óptimamente.
+
+    **Limitación**: Exponencialmente lento. Impracticable en juegos con
+    gran factor de ramificación sin límite de profundidad.
+
+    **MAX vs MIN no son "inteligencias" distintas**:
+    Son simplemente roles en el árbol: MAX maximiza, MIN minimiza.
+    Ambos siguen la misma lógica: elegir la mejor opción según su objetivo.
+
+    **Ejemplo en Tic-Tac-Toe**:
+    - MAX (nosotros) quiere ganar (+10)
+    - MIN (adversario) quiere ganar para él (-10)
+    - Draw = 0
+    Si MAX puede forzar un draw contra un MIN óptimo, minimax retorna 0.
 
     Args:
         state: Estado actual del juego (diccionario con game_state, moves, etc.)
         depth: Profundidad máxima de búsqueda
         is_maximizing: True si es turno de MAX (maximizar), False para MIN (minimizar)
-        eval_func: Función que evalúa estados terminales
-        get_successors: Función que devuelve [(estado, acción), ...]
+        eval_func: Función que evalúa estados terminales f(state) -> valor
+        get_successors: Función que devuelve [(estado_siguiente, acción), ...]
 
     Returns:
         (valor_minimax, nodos_evaluados)
@@ -81,21 +114,56 @@ def alfabeta(state: dict, depth: int, is_maximizing: bool,
              alpha: float, beta: float,
              eval_func: Callable, get_successors: Callable) -> Tuple[int, int]:
     """
-    Algoritmo Alfa-Beta: Minimax con poda.
+    Algoritmo Alfa-Beta: Minimax con poda (optimización).
 
-    Más eficiente que Minimax al descartar ramas que no afectarán la decisión.
+    **Propósito**: Producir EXACTAMENTE el mismo resultado que Minimax pero
+    evaluando MUCHO menos nodos mediante PODA (descartar ramas innecesarias).
+
+    **Mejora sobre Minimax**:
+    - Mantiene ventana [alpha, beta] de valores posibles
+    - Si descubre que una rama no puede afectar la decisión, la ignora
+    - Mismo resultado, ~5-17.5× menos nodos (depende del orden)
+
+    **Información del estado que utiliza**:
+    - Todo lo de Minimax, más:
+    - alpha: Mejor valor que MAX puede garantizar hasta ahora
+    - beta: Mejor valor que MIN puede garantizar hasta ahora
+
+    **Condiciones de Poda**:
+    - Para MAX: si encontramos valor > beta, MIN nunca elegirá este nodo
+    - Para MIN: si encontramos valor < alpha, MAX nunca lo permitiría
+
+    **Costo Computacional**:
+    - Mejor caso: O(b^(d/2)) - se multiplica la profundidad alcanzable
+    - Peor caso: O(b^d) - sin poda (si orden es malo)
+    - Esperado: O(b^(3d/4)) - depende orden de evaluación
+
+    **En TacticalGrid (profundidad variable)**:
+    Profundidad | Minimax | Alfa-Beta | Mejora
+    -----------|---------|-----------|-------
+    2          | 82      | 26        | 3.2×
+    3          | 586     | 96        | 6.1×
+    4          | 3610    | 206       | 17.5×
+
+    **Optimalidad**: ✓ IDÉNTICA a Minimax - produce exactamente el mismo resultado,
+    solo más rápido. Sin "sorpresas" ni aproximaciones.
+
+    **Punto clave - No modifica la decisión**:
+    Cambiar el orden de generación de acciones puede cambiar qué nodos se
+    evalúan, pero Alfa-Beta SIEMPRE retorna la misma decisión óptima.
+    Si Minimax dice "mover en posición X", Alfa-Beta también dirá lo mismo.
 
     Args:
         state: Estado actual del juego
         depth: Profundidad máxima de búsqueda
         is_maximizing: True si es turno de MAX, False para MIN
-        alpha: Mejor valor encontrado por MAX hasta ahora
-        beta: Mejor valor encontrado por MIN hasta ahora
+        alpha: Mejor valor encontrado por MAX hasta ahora (iniciar con -inf)
+        beta: Mejor valor encontrado por MIN hasta ahora (iniciar con +inf)
         eval_func: Función que evalúa estados terminales
-        get_successors: Función que devuelve [(estado, acción), ...]
+        get_successors: Función que devuelve [(estado, acción), ...] en orden
 
     Returns:
-        (valor_alfabeta, nodos_evaluados)
+        (valor_alfabeta, nodos_evaluados): Idéntico al de Minimax
     """
     nodes_evaluated = 1
 

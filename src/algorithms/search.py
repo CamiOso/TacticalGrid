@@ -1,7 +1,7 @@
 """Algoritmos de búsqueda: BFS, DFS, UCS y A*."""
 
 from collections import deque
-from heapq import heappush, heappop
+from heapq import heappush, heappop, heapify
 from typing import List, Dict, Optional, Callable, Tuple
 from itertools import count
 
@@ -267,5 +267,111 @@ def a_star(graph: Dict, start: str, goal: str,
             if new_g < best_cost.get(neighbor, float('inf')):
                 best_cost[neighbor] = new_g
                 heappush(frontier, (new_f, new_g, next(tie_breaker), neighbor, path + [neighbor]))
+
+    return SearchResult(None, float('inf'), explored)
+
+
+def beam_search(graph: dict, start: str, goal: str,
+                heuristic: Callable[[str, str], float],
+                k: int = 2,
+                costs: Dict[Tuple[str, str], int] = None) -> SearchResult:
+    """
+    Beam Search: A* con memoria limitada.
+
+    **Propósito**: Encontrar camino sin explorar toda la frontera.
+    Mantiene solo los k nodos más prometedores en memoria.
+
+    **Estrategia**: Similar a A*, pero limita la frontera a k elementos.
+    - Expande f(n) = g(n) + h(n) como A*
+    - Pero solo conserva k mejores nodos
+    - Cuando la frontera alcanza k, descarta el peor nodo
+
+    **Información del estado que utiliza**:
+    - Costo acumulado g(n)
+    - Heurística estimada h(n)
+    - Parámetro k (tamaño máximo de frontera)
+
+    **Costo Computacional**:
+    - Tiempo: O(b^d) en peor caso (sin poda)
+    - Espacio: O(k) - frontera limitada a k nodos
+    - Mucho mejor que A* en memoria (a costo de optimalidad)
+
+    **Optimalidad**: ✗ NO garantiza camino óptimo
+    - k pequeño: más rápido, menos memoria, peor camino
+    - k grande: se acerca a A*, más memoria
+    - Es un trade-off: memoria vs calidad de solución
+
+    **Parámetros típicos**:
+    - k=1: Greedy puro (muy rápido, muy malo)
+    - k=2: Apenas mejor que greedy
+    - k=4: Balance razonable
+    - k=8+: Se acerca a A*
+
+    **Análisis según PDF**:
+    - Efecto de k en exploración: a mayor k, más nodos explorados
+    - Efecto en solución: a mayor k, mejor camino
+    - Efecto en memoria: lineal con k
+
+    Args:
+        graph: Diccionario de adyacencia {nodo: [vecinos]}
+        start: Nodo inicial
+        goal: Nodo objetivo
+        heuristic: Función h(nodo, goal)
+        k: Tamaño máximo de la frontera (beam width)
+        costs: Diccionario de costos (opcional)
+
+    Returns:
+        SearchResult con el camino encontrado
+    """
+    if costs is None:
+        costs = {}
+
+    if start == goal:
+        return SearchResult([start], 0, 1)
+
+    if k <= 0:
+        raise ValueError("k debe ser >= 1")
+
+    tie_breaker = count()
+    h_start = heuristic(start, goal)
+    frontier = [(h_start, 0, next(tie_breaker), start, [start])]
+    best_cost = {start: 0}
+    explored = 0
+
+    while frontier:
+        # Expandir mejor nodo
+        f_score, g_score, _, node, path = heappop(frontier)
+
+        if g_score > best_cost.get(node, float('inf')):
+            continue
+
+        explored += 1
+
+        if node == goal:
+            return SearchResult(path, g_score, explored)
+
+        # Generar sucesores
+        successors = []
+        for neighbor in graph.get(node, []):
+            edge_cost = costs.get((node, neighbor), 1)
+            new_g = g_score + edge_cost
+            h_neighbor = heuristic(neighbor, goal)
+            new_f = new_g + h_neighbor
+
+            if new_g < best_cost.get(neighbor, float('inf')):
+                best_cost[neighbor] = new_g
+                successors.append((new_f, new_g, next(tie_breaker), neighbor, path + [neighbor]))
+
+        # Agregar sucesores a la frontera
+        for successor in successors:
+            heappush(frontier, successor)
+
+        # Mantener frontera limitada a k elementos
+        if len(frontier) > k:
+            # Descartar los peores elementos, mantener solo k mejores
+            frontier_list = list(frontier)
+            frontier_list.sort()  # Ordena por f_score (primer elemento de tupla)
+            frontier = frontier_list[:k]
+            heapify(frontier)
 
     return SearchResult(None, float('inf'), explored)

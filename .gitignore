@@ -30,3 +30,13 @@ Thumbs.db
 PLAN_20DIAS.md
 APUNTES_*.md
 ARCHITECTURE.md
+ANALISIS_PDF.md
+
+# Generated visualizations
+visualizacion_*.html
+viz_*.html
+paso_a_paso_*.html
+demo_*.html
+
+# Claude Code
+.claude/

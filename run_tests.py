@@ -6,6 +6,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.application.test_executor import TestExecutor
+from src.application.ascii_visualizer import ASCIIVisualizer
+from src.scenario.scenario import Scenario
 
 
 def main():
@@ -38,6 +40,14 @@ def main():
             print(f"   Mapa: {executor.scenario.rows}×{executor.scenario.cols}")
             print(f"   Unidades: {len(executor.scenario.units)}")
             print(f"   Modo de prueba: {executor.scenario.test_mode}")
+
+            # Visualizar mapa
+            print("\n" + "─" * 70)
+            print("🗺️  VISUALIZACIÓN DEL MAPA")
+            print("─" * 70)
+            visualizer = ASCIIVisualizer(executor.scenario)
+            visualizer.print_map()
+            visualizer.print_legend()
 
             # Ejecutar prueba
             results = executor.execute_test()

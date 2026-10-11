@@ -17,7 +17,7 @@ El proyecto ejecuta **algoritmos de inteligencia artificial** en mapas tácticos
 
 ## 🚀 Cómo ejecutar TODO el proyecto (línea por línea)
 
-### **OPCIÓN 1: Ejecutar y ver TODO en consola**
+### **OPCIÓN 1: Ejecutar y ver TODO en consola (CON VISUALIZACIÓN ASCII)**
 
 ```bash
 python run_tests.py
@@ -25,10 +25,11 @@ python run_tests.py
 
 **Qué hace:**
 - ✅ Carga los 3 escenarios JSON automáticamente
+- ✅ **Visualiza cada mapa en ASCII** con terrenos, unidades, bases, recurso
 - ✅ Ejecuta BFS, DFS, UCS, A* en cada uno
 - ✅ Muestra resultados en tabla: movimientos, costo, nodos explorados
 - ✅ Compara algoritmos (ej: "UCS 50% más barato que BFS")
-- ✅ TODO en la pantalla, sin archivos adicionales
+- ✅ TODO en la pantalla con colores ANSI, sin archivos adicionales
 
 **Output típico:**
 ```
@@ -62,6 +63,27 @@ A*               ✅       8            8             7
      UCS exploró: 8 nodos
      A* exploró: 7 nodos (87.5%)
 ```
+
+---
+
+### **OPCIÓN 1B: Usar agentes inteligentes integrados con JSON**
+
+```bash
+python search_with_agents.py
+```
+
+**Qué hace:**
+- ✅ Carga escenarios JSON dinámicamente
+- ✅ Crea **agentes inteligentes** (BFS, DFS, A*, Beam Search)
+- ✅ Cada agente busca camino desde unidad inicial a objetivo
+- ✅ **Visualización ASCII** automática de mapa y resultado
+- ✅ Detalles de búsqueda: pasos, costo, nodos explorados
+
+**Agentes disponibles:**
+- `BFSAgent` - Búsqueda por amplitud
+- `DFSAgent` - Búsqueda por profundidad  
+- `SmartAgent` - Búsqueda A* (recomendado)
+- `EfficientAgent` - Beam Search con k variable
 
 ---
 
@@ -144,11 +166,13 @@ Proyecto/
 │   ├── application/
 │   │   ├── test_executor.py       # Ejecuta búsqueda desde JSON
 │   │   ├── solution_verifier.py   # Verifica soluciones válidas
-│   │   └── visualizer.py          # Genera HTML+Canvas
+│   │   ├── visualizer.py          # Genera HTML+Canvas
+│   │   └── ascii_visualizer.py    # ⭐ Visualización ASCII robusta
 │   └── agents/
 │       ├── unit.py                # UnitBFS, UnitDFS
 │       ├── smart_unit.py          # SmartUnit (A*)
-│       └── tactical_unit.py       # TacticalUnit (Minimax)
+│       ├── tactical_unit.py       # TacticalUnit (Minimax)
+│       └── scenario_agents.py     # ⭐ Agentes integrados con JSON
 ├── tests/
 │   ├── test_scenario.py           # 13 tests
 │   ├── test_search.py             # 15 tests
@@ -160,11 +184,14 @@ Proyecto/
 │   ├── ejemplo_basico.json        # Mapa 4×4
 │   ├── terrenos_costosos.json     # Mapa 5×5 con costos variables
 │   └── divergencia_bfs_ucs.json   # Caso de estudio: BFS vs UCS
-├── run_tests.py                   # Ejecuta TODO de forma simple
+├── run_tests.py                   # ⭐ Ejecuta escenarios (con visualización ASCII)
+├── search_with_agents.py          # ⭐ Búsqueda con agentes integrados
 ├── visualize_search.py            # Genera visualizaciones HTML
 ├── examples_search.py             # Ejemplos de búsqueda
 ├── examples_adversarial.py        # Ejemplos de Minimax/Alfa-Beta
 ├── examples_agents.py             # Ejemplos de agentes
+├── DOCUMENTO_TECNICO_COMPLETO.md  # Documentación técnica (61KB)
+├── DOCUMENTO_TECNICO_COMPLETO.html# Versión HTML para PDF
 └── README.md
 ```
 

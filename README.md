@@ -230,7 +230,11 @@ UCS (minimiza costo):
 
 ---
 
-## 👨‍💻 Autores
+## 👨‍💻 Autor
 
-Cristian Camilo Osorio Granada  
-Sistemas Inteligentes I - UCALDAS
+**Cristian Camilo Osorio Granada**  
+Estudiante de Ingeniería en Sistemas Computacionales  
+Universidad de Caldas  
+Sistemas Inteligentes I - 2024
+
+**Correo:** cristian.1701421857@ucaldas.edu.co

@@ -45,6 +45,11 @@ def bfs(graph: Dict, start, goal) -> SearchResult:
 
     **Ventaja**: Completo y óptimo para grafos sin pesos.
 
+    **IA**:
+    - Usa: Frontier FIFO para expandir por niveles.
+    - Interviene: Selecciona nodo más antiguo (FIFO) y pausa si hay ciclo.
+    - Validar: Que visited evita revisitar; que result es camino conectado.
+
     Args:
         graph: Diccionario de adyacencia {nodo: [vecinos]}
         start: Nodo inicial
@@ -98,6 +103,11 @@ def dfs(graph: Dict, start, goal) -> SearchResult:
     depende del orden de exploración de vecinos.
 
     **Ventaja**: Usa menos memoria que BFS. Útil para exploración profunda.
+
+    **IA**:
+    - Usa: Frontier LIFO (pila) para explorar profundo primero.
+    - Interviene: Selecciona nodo más reciente (LIFO) y retrocede si sin salida.
+    - Validar: Que no hay ciclos (visited); que camino es válido.
 
     Args:
         graph: Diccionario de adyacencia {nodo: [vecinos]}
@@ -156,6 +166,11 @@ def ucs(graph: Dict, start: str, goal: str,
     **Diferencia vs BFS**: BFS minimiza pasos, UCS minimiza costo acumulado.
     En un mapa con terrenos variados, UCS puede elegir un camino más largo pero
     más barato (atravesar pasto en lugar de montaña).
+
+    **IA**:
+    - Usa: Frontier por costo acumulado g(n) con heap de prioridad.
+    - Interviene: Selecciona nodo con menor costo; descarta si encuentra mejor camino.
+    - Validar: Que best_cost evita redundancias; que resultado es costo mínimo.
 
     Args:
         graph: Diccionario de adyacencia {nodo: [vecinos]}
@@ -236,6 +251,11 @@ def a_star(graph: Dict, start: str, goal: str,
     hacia el objetivo. En un grid 5x5:
     - UCS: ~35 nodos explorados
     - A* Manhattan: ~29 nodos explorados
+
+    **IA**:
+    - Usa: Frontier por f(n) = g(n) + h(n) (costo real + heurística).
+    - Interviene: Heurística reduce nodos vs UCS; selecciona nodo con menor f.
+    - Validar: Que h es admisible; que A* explora ≤ nodos que UCS.
 
     Args:
         graph: Diccionario de adyacencia {nodo: [vecinos]}
@@ -327,6 +347,11 @@ def beam_search(graph: dict, start: str, goal: str,
     - Efecto de k en exploración: a mayor k, más nodos explorados
     - Efecto en solución: a mayor k, mejor camino
     - Efecto en memoria: lineal con k
+
+    **IA**:
+    - Usa: Frontier limitada a k mejores nodos (A* con memory cap).
+    - Interviene: Ordena por f(n); descarta peores si excede k.
+    - Validar: Que frontera ≤ k; que más k = menos exploración; k=1 es greedy.
 
     Args:
         graph: Diccionario de adyacencia {nodo: [vecinos]}

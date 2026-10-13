@@ -21,6 +21,11 @@ class UtilityFunction:
     - Qué información del estado utiliza
     - Cuál es su costo computacional
     - Cómo cambiaría el comportamiento si se modifican pesos
+
+    **IA**:
+    - Usa: Funciones de evaluación para Minimax (3 estrategias: simple/balanced/aggressive).
+    - Interviene: Valúa estados; Minimax elige acción basada en valores.
+    - Validar: u(ganar) > u(perder); cambiar pesos cambia decisión Minimax.
     """
 
     @staticmethod
@@ -180,6 +185,11 @@ def create_minimax_eval_function(team: str, strategy: str = "balanced") -> Calla
 
     Retorna:
         Función que toma GameState y retorna float (valor de utilidad)
+
+    **IA**:
+    - Usa: Factory pattern para crear evaluadores (3 estrategias).
+    - Interviene: Selecciona estrategia; cada una tiene pesos distintos.
+    - Validar: Cambiar strategy cambia resultado Minimax.
     """
     strategies = {
         "simple": UtilityFunction.simple_distance_based,

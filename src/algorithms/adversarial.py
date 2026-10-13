@@ -77,6 +77,11 @@ def minimax(state: dict, depth: int, is_maximizing: bool,
 
     Returns:
         (valor_minimax, nodos_evaluados)
+
+    **IA**:
+    - Usa: Árbol de juego; MAX maximiza, MIN minimiza.
+    - Interviene: Recursión hasta profundidad 0; eval_func valúa terminales.
+    - Validar: MAX retorna máximo de sucesores; MIN retorna mínimo.
     """
     nodes_evaluated = 1
 
@@ -166,6 +171,11 @@ def alfabeta(state: dict, depth: int, is_maximizing: bool,
 
     Returns:
         (valor_alfabeta, nodos_evaluados): Idéntico al de Minimax
+
+    **IA**:
+    - Usa: Minimax con poda alfa-beta (ventana [alpha, beta]).
+    - Interviene: Descarta ramas si no pueden mejorar mejor valor encontrado.
+    - Validar: Mismo resultado que Minimax; menos nodos evaluados.
     """
     nodes_evaluated = 1
 

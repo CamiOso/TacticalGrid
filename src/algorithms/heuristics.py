@@ -29,6 +29,11 @@ def manhattan_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
     **Limitación**: No considera terrenos costosos. Si hay zonas prohibidas,
     Manhattan puede subestimar significativamente.
 
+    **IA**:
+    - Usa: Suma |df| + |dc| para estimar distancia.
+    - Interviene: Guía A* sin sobrestimar (admisible).
+    - Validar: h(goal)=0; que h ≤ costo_real; que A* explora < nodos que UCS.
+
     Args:
         pos_a: Posición actual (fila, columna)
         pos_b: Posición objetivo (fila, columna)
@@ -61,6 +66,11 @@ def euclidean_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> float:
     **Limitación en TacticalGrid**:
     Como el proyecto solo permite 4 direcciones (no diagonal),
     Euclidean subestima y NO garantiza optimalidad en A*.
+
+    **IA**:
+    - Usa: Distancia euclidiana √(df² + dc²).
+    - Interviene: Subestima en 4-dir → NO óptima en A*.
+    - Validar: Comparar A*-Euclidean vs A*-Manhattan: resultados pueden diferir.
 
     Args:
         pos_a: Posición actual (fila, columna)
@@ -96,6 +106,11 @@ def chebyshev_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
     Como el proyecto solo permite 4 direcciones (no diagonal),
     Chebyshev subestima significativamente y NO garantiza optimalidad en A*.
 
+    **IA**:
+    - Usa: Máximo de cambios max(|df|, |dc|).
+    - Interviene: Subestima mucho en 4-dir → NO usar en A*.
+    - Validar: Que A*-Chebyshev explora > nodos que A*-Manhattan.
+
     Args:
         pos_a: Posición actual (fila, columna)
         pos_b: Posición objetivo (fila, columna)
@@ -104,6 +119,58 @@ def chebyshev_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
         Estimación del costo restante (entero)
     """
     return max(abs(pos_a[0] - pos_b[0]), abs(pos_a[1] - pos_b[1]))
+
+
+def manhattan_weighted_by_terrain(pos_a: Tuple[int, int], pos_b: Tuple[int, int],
+                                  min_cost: float = 1.0) -> float:
+    """
+    Heurística propia: Manhattan escalada por costo mínimo de terreno.
+
+    **Propósito**: Mejora Manhattan considerando terrenos costosos.
+    Justificación: Si todos los terrenos cuesta ≥min_cost, el costo restante
+    es ≥ Manhattan * min_cost. Más informativa que Manhattan en mapas con
+    terrenos variados (pasto=1, montaña=5, etc).
+
+    **Fórmula**: h(n) = (|df| + |dc|) * min_cost
+    donde min_cost es el costo mínimo de un paso en cualquier terreno transitable.
+
+    **Información del estado que utiliza**:
+    - Coordenadas (x, y) de ambas posiciones
+    - Costo mínimo de terreno transitable en el escenario
+
+    **Costo computacional**: O(1) - suma + multiplicación.
+
+    **Admisibilidad**: ✓ SÍ es admisible si min_cost ≤ costo_real_por_paso.
+    Demostración:
+    - Costo mínimo por paso es min_cost
+    - Manhattan pasos = |df| + |dc|
+    - Costo total mínimo ≥ (|df| + |dc|) * min_cost
+    - Por lo tanto h(n) nunca sobrestima
+
+    **Ventaja sobre Manhattan**:
+    - En mapas con terrenos costosos, explora menos nodos
+    - Ej: mapa con camino=1, montaña=5: esta heurística es 5x más informativa
+    - Mantiene optimalidad de A* (sigue siendo admisible)
+
+    **Limitación**:
+    - Requiere conocer min_cost previamente (debe pasarse como parámetro)
+    - Si min_cost se estima mal, pierde admisibilidad
+
+    **IA**:
+    - Usa: Manhattan * min_cost (escala por terreno).
+    - Interviene: Mejor guía en mapas con terrenos caros vs Manhattan.
+    - Validar: Que es admisible (h ≤ costo_real); que A* explora < nodos.
+
+    Args:
+        pos_a: Posición actual (fila, columna)
+        pos_b: Posición objetivo (fila, columna)
+        min_cost: Costo mínimo de un paso (default 1.0)
+
+    Returns:
+        Estimación del costo restante (float)
+    """
+    manhattan = abs(pos_a[0] - pos_b[0]) + abs(pos_a[1] - pos_b[1])
+    return float(manhattan * min_cost)
 
 
 # Heurística nula (para comparar UCS con A*)
@@ -115,6 +182,11 @@ def zero_heuristic(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
     Útil para experimentar y ver el impacto de la heurística.
 
     **Admisibilidad**: ✓ SÍ (h(n)=0 siempre es admisible, es lo menos informativo).
+
+    **IA**:
+    - Usa: h=0 para baseline (A* sin heurística = UCS).
+    - Interviene: Desactiva guía para medir impacto.
+    - Validar: Que A*(h=0) ≈ UCS en exploración; que A*(Manhattan) < A*(h=0).
 
     Args:
         pos_a: Posición actual

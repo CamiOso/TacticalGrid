@@ -41,7 +41,8 @@ def manhattan_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
 
 def euclidean_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> float:
     """
-    Heurística Euclidiana para grids con movimientos en 8 direcciones.
+    Heurística Euclidiana: SOLO ADMISIBLE para movimiento diagonal (8 direcciones).
+    ⚠️ NO ES ADMISIBLE para movimiento 4-direccional (arriba, abajo, izq, der).
 
     **Qué intenta estimar**: La distancia en línea recta entre dos posiciones.
     Asume que se puede mover en cualquier dirección (incluyendo diagonales).
@@ -51,18 +52,15 @@ def euclidean_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> float:
 
     **Costo computacional**: O(1) - cálculo algebraico simple.
 
-    **Admisibilidad**: ✓ SÍ es admisible (nunca sobrestima).
-    - h(n) = sqrt(dx² + dy²)
-    - La distancia real es ≥ distancia euclidiana (puede haber obstáculos).
-    - Nunca sobrestima porque es la distancia mínima posible en espacio continuo.
+    **Admisibilidad**:
+    - ✓ SÍ admisible si se permite movimiento diagonal a costo 1.
+    - ✗ NO admisible para movimiento 4-direccional (SUBESTIMA).
+      Ejemplo: (0,0) a (1,1) → Euclidean=√2≈1.41 pero costo real es 2 (derecha+abajo).
+    - En este proyecto con movimiento 4-directional, puede encontrar rutas subóptimas.
 
-    **Cuándo es mejor que Manhattan**:
-    - En terrenos sin obstáculos con movimiento diagonal permitido.
-    - Proporciona mejor discriminación (más selectiva) que Manhattan.
-    - Reduces exploración: A* Euclidean es más agresivo que A* Manhattan.
-
-    **Limitación**: Puede subestimar si el movimiento diagonal cuesta más que
-    dos movimientos ortogonales. En ese caso, necesitaría escalar el resultado.
+    **Limitación en TacticalGrid**:
+    Como el proyecto solo permite 4 direcciones (no diagonal),
+    Euclidean subestima y NO garantiza optimalidad en A*.
 
     Args:
         pos_a: Posición actual (fila, columna)
@@ -78,7 +76,8 @@ def euclidean_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> float:
 
 def chebyshev_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
     """
-    Heurística Chebyshev para grids con movimiento diagonal de costo 1.
+    Heurística Chebyshev: SOLO ADMISIBLE para movimiento diagonal (8 direcciones).
+    ⚠️ NO ES ADMISIBLE para movimiento 4-direccional (arriba, abajo, izq, der).
 
     **Qué intenta estimar**: Pasos mínimos si se permite movimiento diagonal.
     En ajedrez, es cómo se mueve un rey (máximo de cambios en cualquier dirección).
@@ -87,13 +86,15 @@ def chebyshev_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
 
     **Costo computacional**: O(1) - máximo de dos diferencias.
 
-    **Admisibilidad**: ✓ SÍ es admisible cuando el movimiento diagonal cuesta 1.
+    **Admisibilidad**:
+    - ✓ SÍ admisible cuando el movimiento diagonal cuesta 1 (8-directional).
+    - ✗ NO admisible para movimiento 4-direccional (SUBESTIMA).
+      Ejemplo: (0,0) a (1,1) → Chebyshev=max(1,1)=1 pero costo real es 2 (derecha+abajo).
+    - En este proyecto con movimiento 4-directional, puede encontrar rutas subóptimas.
 
-    **Comparación**:
-    - Manhattan: 8 pasos de (0,0) a (4,4)
-    - Chebyshev: 4 pasos de (0,0) a (4,4)
-    - Euclidean: ~5.66 pasos
-    - Real con diagonal: 4 pasos
+    **Limitación en TacticalGrid**:
+    Como el proyecto solo permite 4 direcciones (no diagonal),
+    Chebyshev subestima significativamente y NO garantiza optimalidad en A*.
 
     Args:
         pos_a: Posición actual (fila, columna)

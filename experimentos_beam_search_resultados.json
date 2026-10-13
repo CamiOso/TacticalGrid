@@ -1,0 +1,92 @@
+{
+  "divergencia_bfs_ucs.json": {
+    "1": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 9,
+      "memoria_frontera": 1
+    },
+    "2": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 10,
+      "memoria_frontera": 2
+    },
+    "4": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 10,
+      "memoria_frontera": 4
+    },
+    "8": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 10,
+      "memoria_frontera": 8
+    }
+  },
+  "ejemplo_basico.json": {
+    "1": {
+      "exito": true,
+      "movimientos": 6,
+      "costo": 14,
+      "explorados": 7,
+      "memoria_frontera": 1
+    },
+    "2": {
+      "exito": true,
+      "movimientos": 6,
+      "costo": 12,
+      "explorados": 11,
+      "memoria_frontera": 2
+    },
+    "4": {
+      "exito": true,
+      "movimientos": 6,
+      "costo": 12,
+      "explorados": 15,
+      "memoria_frontera": 4
+    },
+    "8": {
+      "exito": true,
+      "movimientos": 6,
+      "costo": 12,
+      "explorados": 15,
+      "memoria_frontera": 8
+    }
+  },
+  "terrenos_costosos.json": {
+    "1": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 9,
+      "memoria_frontera": 1
+    },
+    "2": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 9,
+      "memoria_frontera": 2
+    },
+    "4": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 9,
+      "memoria_frontera": 4
+    },
+    "8": {
+      "exito": true,
+      "movimientos": 8,
+      "costo": 8,
+      "explorados": 9,
+      "memoria_frontera": 8
+    }
+  }
+}

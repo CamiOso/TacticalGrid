@@ -81,7 +81,9 @@ def minimax(state: dict, depth: int, is_maximizing: bool,
     nodes_evaluated = 1
 
     # Caso base: profundidad = 0 o estado terminal
-    if depth == 0 or state.get('is_terminal', False):
+    is_terminal = (state.get('is_terminal', False) if isinstance(state, dict)
+                   else state.is_terminal())
+    if depth == 0 or is_terminal:
         return eval_func(state), nodes_evaluated
 
     if is_maximizing:
@@ -168,7 +170,9 @@ def alfabeta(state: dict, depth: int, is_maximizing: bool,
     nodes_evaluated = 1
 
     # Caso base
-    if depth == 0 or state.get('is_terminal', False):
+    is_terminal = (state.get('is_terminal', False) if isinstance(state, dict)
+                   else state.is_terminal())
+    if depth == 0 or is_terminal:
         return eval_func(state), nodes_evaluated
 
     if is_maximizing:

@@ -21,6 +21,7 @@ class TestExecutor:
     def __init__(self):
         """Inicializa el ejecutor."""
         self.scenario = None
+        self.scenario_data = None  # Guardar los datos raw para Minimax/GameState
         self.results = []
 
     def load_scenario(self, scenario_path: str | Path) -> Scenario:
@@ -34,6 +35,7 @@ class TestExecutor:
             Objeto Scenario cargado y validado
         """
         scenario_data = ScenarioLoader.load(scenario_path)
+        self.scenario_data = scenario_data  # Guardar para GameState/Minimax
         self.scenario = Scenario(scenario_data)
         return self.scenario
 
@@ -176,11 +178,11 @@ class TestExecutor:
         """
         Ejecuta una prueba adversarial (Minimax/Alfa-Beta).
 
-        Nota: Requiere que el escenario defina funciones de evaluación
-        y generación de sucesores apropiadas para su dominio específico.
+        Requiere que el escenario defina funciones de evaluación
+        y generación de sucesores para el dominio del juego.
 
         Retorna:
-            Dict con resultados de evaluación
+            Dict con resultados de evaluación (valor, acción, métricas)
         """
         if not self.scenario:
             raise RuntimeError("Escenario no cargado.")
@@ -189,12 +191,93 @@ class TestExecutor:
         if test_config['modo'] != 'adversarial':
             raise ValueError(f"Test mode debe ser 'adversarial', se encontró '{test_config['modo']}'")
 
-        results = {
-            'modo': 'adversarial',
-            'error': 'Modo adversarial requiere dominio específico con eval_func y get_successors'
-        }
+        from src.game.state import GameState, Unit
+        from src.algorithms.adversarial import minimax_with_action, alfabeta_with_action
+        from src.game.utility import create_minimax_eval_function
 
-        return results
+        try:
+            # Crear estado inicial del juego
+            units = []
+            for unit_data in self.scenario.units:
+                units.append(Unit(
+                    id=unit_data['id'],
+                    team=unit_data.get('bando', 'A'),
+                    row=unit_data['fila'],
+                    col=unit_data['columna'],
+                    carries_resource=False
+                ))
+
+            resource_pos = self.scenario.resource_position
+            if isinstance(resource_pos, dict):
+                resource_pos = (resource_pos['fila'], resource_pos['columna'])
+
+            initial_state = GameState(
+                scenario_data=self.scenario_data,
+                units=units,
+                resource_pos=resource_pos,
+                resource_carrier=None,
+                current_turn='A'
+            )
+
+            # Crear función de utilidad
+            utility_func = create_minimax_eval_function(team='A', strategy='balanced')
+
+            # Función para generar sucesores
+            def get_successors(state: GameState, is_maximizing: bool = None) -> List[Tuple]:
+                """Genera todos los sucesores posibles de un estado."""
+                successors = []
+                for unit in state.get_units_by_team(state.current_turn):
+                    for action in state.get_valid_actions(unit.id):
+                        next_state = state.copy()
+                        next_state.apply_action(unit.id, action)
+                        successors.append((next_state, str(action)))
+                return successors
+
+            # Ejecutar Minimax y Alfa-Beta
+            profundidad = test_config.get('profundidad', 3)
+
+            results = {
+                'modo': 'adversarial',
+                'estado_inicial': str(initial_state),
+                'profundidad': profundidad,
+                'algoritmos': {}
+            }
+
+            # Minimax
+            try:
+                resultado_minimax = minimax_with_action(
+                    initial_state, profundidad, True, utility_func, get_successors
+                )
+                results['algoritmos']['Minimax'] = {
+                    'exito': resultado_minimax.best_action is not None,
+                    'valor': resultado_minimax.best_value,
+                    'accion': str(resultado_minimax.best_action) if resultado_minimax.best_action else None,
+                    'nodos_evaluados': resultado_minimax.nodes_evaluated
+                }
+            except Exception as e:
+                results['algoritmos']['Minimax'] = {'error': str(e)}
+
+            # Alfa-Beta
+            try:
+                resultado_alfabeta = alfabeta_with_action(
+                    initial_state, profundidad, True, utility_func, get_successors
+                )
+                results['algoritmos']['Alfa-Beta'] = {
+                    'exito': resultado_alfabeta.best_action is not None,
+                    'valor': resultado_alfabeta.best_value,
+                    'accion': str(resultado_alfabeta.best_action) if resultado_alfabeta.best_action else None,
+                    'nodos_evaluados': resultado_alfabeta.nodes_evaluated
+                }
+            except Exception as e:
+                results['algoritmos']['Alfa-Beta'] = {'error': str(e)}
+
+            return results
+
+        except Exception as e:
+            return {
+                'modo': 'adversarial',
+                'error': f'Error en prueba adversarial: {str(e)}'
+            }
 
     def execute_test(self) -> Dict:
         """
@@ -255,6 +338,26 @@ class TestExecutor:
                 explorados = algo_result.get('estados_generados', '-')
 
                 output.append(f"{algo_name:<15} {exito:<8} {str(movimientos):<15} {costo_str:<15} {str(explorados):<12}")
+
+        elif results['modo'] == 'adversarial':
+            output.append(f"\nConfiguración:")
+            output.append(f"  Profundidad: {results.get('profundidad', '-')}")
+            output.append(f"  Estado inicial: {results.get('estado_inicial', '-')}")
+
+            if 'error' in results:
+                output.append(f"\n❌ Error: {results['error']}")
+            else:
+                output.append(f"\n{'Algoritmo':<15} {'Éxito':<8} {'Valor':<15} {'Acción':<20}")
+                output.append("-" * 60)
+
+                for algo_name, algo_result in results['algoritmos'].items():
+                    if 'error' in algo_result:
+                        output.append(f"{algo_name:<15} {'❌':<8} {'Error':<15} {algo_result['error']:<20}")
+                    else:
+                        exito = "✅" if algo_result.get('exito') else "❌"
+                        valor = algo_result.get('valor', '-')
+                        accion = algo_result.get('accion', 'None')
+                        output.append(f"{algo_name:<15} {exito:<8} {str(valor):<15} {str(accion):<20}")
 
         output.append("\n" + "=" * 70)
         return "\n".join(output)

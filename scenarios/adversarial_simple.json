@@ -1,0 +1,64 @@
+{
+  "version": "1.0",
+  "mapa": {
+    "filas": 3,
+    "columnas": 3
+  },
+  "tipos_terreno": {
+    "camino": {
+      "costo": 1,
+      "transitable": true
+    },
+    "muro": {
+      "costo": 0,
+      "transitable": false
+    }
+  },
+  "terreno": [
+    ["camino", "camino", "camino"],
+    ["camino", "camino", "camino"],
+    ["camino", "camino", "camino"]
+  ],
+  "bases": {
+    "A": {
+      "fila": 0,
+      "columna": 0
+    },
+    "B": {
+      "fila": 2,
+      "columna": 2
+    }
+  },
+  "unidades": [
+    {
+      "id": "A1",
+      "fila": 0,
+      "columna": 0,
+      "bando": "A"
+    },
+    {
+      "id": "B1",
+      "fila": 2,
+      "columna": 2,
+      "bando": "B"
+    }
+  ],
+  "recurso": {
+    "fila": 1,
+    "columna": 1,
+    "portador": null
+  },
+  "turno": "A",
+  "juego": {
+    "jugadores": ["A", "B"],
+    "recurso_compartido": true
+  },
+  "prueba": {
+    "modo": "adversarial",
+    "profundidad": 3,
+    "objetivo": {
+      "fila": 2,
+      "columna": 2
+    }
+  }
+}

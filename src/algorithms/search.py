@@ -9,15 +9,19 @@ from itertools import count
 class SearchResult:
     """Resultado de una búsqueda."""
 
-    def __init__(self, path: Optional[List], cost: int, explored: int):
+    def __init__(self, path: Optional[List], cost: int, expanded: int, generated: int = None, max_frontier: int = None):
         self.path = path
         self.cost = cost
-        self.explored = explored
+        self.expanded = expanded  # Nodos expandidos (sacados de la frontera)
+        self.generated = generated if generated is not None else expanded  # Nodos generados (creados)
+        self.max_frontier = max_frontier if max_frontier is not None else expanded  # Máximo tamaño de frontera
+        # Compatibilidad: explored ahora mapea a expanded
+        self.explored = expanded
 
     def __repr__(self):
         if self.path:
-            return f"SearchResult(path_length={len(self.path)-1}, cost={self.cost}, explored={self.explored})"
-        return f"SearchResult(No solution found, explored={self.explored})"
+            return f"SearchResult(path_length={len(self.path)-1}, cost={self.cost}, expanded={self.expanded}, generated={self.generated})"
+        return f"SearchResult(No solution found, expanded={self.expanded}, generated={self.generated})"
 
 
 def bfs(graph: Dict, start, goal) -> SearchResult:
@@ -50,25 +54,27 @@ def bfs(graph: Dict, start, goal) -> SearchResult:
         SearchResult con el camino, costo y nodos explorados
     """
     if start == goal:
-        return SearchResult([start], 0, 1)
+        return SearchResult([start], 0, 1, 1, 1)
 
     visited = {start}
     queue = deque([(start, [start])])
-    explored = 0
+    expanded = 0
+    generated = 1  # start node
 
     while queue:
         node, path = queue.popleft()
-        explored += 1
+        expanded += 1
 
         for neighbor in graph.get(node, []):
             if neighbor == goal:
-                return SearchResult(path + [neighbor], len(path), explored + 1)
+                return SearchResult(path + [neighbor], len(path), expanded + 1, generated + 1, len(queue) + 1)
 
             if neighbor not in visited:
                 visited.add(neighbor)
+                generated += 1
                 queue.append((neighbor, path + [neighbor]))
 
-    return SearchResult(None, float('inf'), explored)
+    return SearchResult(None, float('inf'), expanded, generated, 0)
 
 
 def dfs(graph: Dict, start, goal) -> SearchResult:
@@ -102,25 +108,27 @@ def dfs(graph: Dict, start, goal) -> SearchResult:
         SearchResult con el camino, costo y nodos explorados
     """
     if start == goal:
-        return SearchResult([start], 0, 1)
+        return SearchResult([start], 0, 1, 1, 1)
 
     visited = {start}
     stack = [(start, [start])]
-    explored = 0
+    expanded = 0
+    generated = 1  # start node
 
     while stack:
         node, path = stack.pop()
-        explored += 1
+        expanded += 1
 
         for neighbor in graph.get(node, []):
             if neighbor == goal:
-                return SearchResult(path + [neighbor], len(path), explored + 1)
+                return SearchResult(path + [neighbor], len(path), expanded + 1, generated + 1, len(stack) + 1)
 
             if neighbor not in visited:
                 visited.add(neighbor)
+                generated += 1
                 stack.append((neighbor, path + [neighbor]))
 
-    return SearchResult(None, float('inf'), explored)
+    return SearchResult(None, float('inf'), expanded, generated, 0)
 
 
 def ucs(graph: Dict, start: str, goal: str,
@@ -159,12 +167,14 @@ def ucs(graph: Dict, start: str, goal: str,
         SearchResult con el camino, costo y nodos explorados
     """
     if start == goal:
-        return SearchResult([start], 0, 1)
+        return SearchResult([start], 0, 1, 1, 1)
 
     tie_breaker = count()
     frontier = [(0, next(tie_breaker), start, [start])]
     best_cost = {start: 0}
-    explored = 0
+    expanded = 0
+    generated = 1  # start node
+    max_frontier = 1
 
     while frontier:
         cost, _, node, path = heappop(frontier)
@@ -172,10 +182,10 @@ def ucs(graph: Dict, start: str, goal: str,
         if cost > best_cost.get(node, float('inf')):
             continue
 
-        explored += 1
+        expanded += 1
 
         if node == goal:
-            return SearchResult(path, cost, explored)
+            return SearchResult(path, cost, expanded, generated, max_frontier)
 
         for neighbor in graph.get(node, []):
             edge_cost = costs.get((node, neighbor), 1)
@@ -184,8 +194,10 @@ def ucs(graph: Dict, start: str, goal: str,
             if new_cost < best_cost.get(neighbor, float('inf')):
                 best_cost[neighbor] = new_cost
                 heappush(frontier, (new_cost, next(tie_breaker), neighbor, path + [neighbor]))
+                generated += 1
+                max_frontier = max(max_frontier, len(frontier))
 
-    return SearchResult(None, float('inf'), explored)
+    return SearchResult(None, float('inf'), expanded, generated, max_frontier)
 
 
 def a_star(graph: Dict, start: str, goal: str,
@@ -239,13 +251,15 @@ def a_star(graph: Dict, start: str, goal: str,
         costs = {}
 
     if start == goal:
-        return SearchResult([start], 0, 1)
+        return SearchResult([start], 0, 1, 1, 1)
 
     tie_breaker = count()
     h_start = heuristic(start, goal)
     frontier = [(h_start, 0, next(tie_breaker), start, [start])]
     best_cost = {start: 0}
-    explored = 0
+    expanded = 0
+    generated = 1  # start node
+    max_frontier = 1
 
     while frontier:
         f_score, g_score, _, node, path = heappop(frontier)
@@ -253,10 +267,10 @@ def a_star(graph: Dict, start: str, goal: str,
         if g_score > best_cost.get(node, float('inf')):
             continue
 
-        explored += 1
+        expanded += 1
 
         if node == goal:
-            return SearchResult(path, g_score, explored)
+            return SearchResult(path, g_score, expanded, generated, max_frontier)
 
         for neighbor in graph.get(node, []):
             edge_cost = costs.get((node, neighbor), 1)
@@ -267,8 +281,10 @@ def a_star(graph: Dict, start: str, goal: str,
             if new_g < best_cost.get(neighbor, float('inf')):
                 best_cost[neighbor] = new_g
                 heappush(frontier, (new_f, new_g, next(tie_breaker), neighbor, path + [neighbor]))
+                generated += 1
+                max_frontier = max(max_frontier, len(frontier))
 
-    return SearchResult(None, float('inf'), explored)
+    return SearchResult(None, float('inf'), expanded, generated, max_frontier)
 
 
 def beam_search(graph: dict, start: str, goal: str,
@@ -327,7 +343,7 @@ def beam_search(graph: dict, start: str, goal: str,
         costs = {}
 
     if start == goal:
-        return SearchResult([start], 0, 1)
+        return SearchResult([start], 0, 1, 1, 1)
 
     if k <= 0:
         raise ValueError("k debe ser >= 1")
@@ -336,7 +352,9 @@ def beam_search(graph: dict, start: str, goal: str,
     h_start = heuristic(start, goal)
     frontier = [(h_start, 0, next(tie_breaker), start, [start])]
     best_cost = {start: 0}
-    explored = 0
+    expanded = 0
+    generated = 1  # start node
+    max_frontier = 1
 
     while frontier:
         # Expandir mejor nodo
@@ -345,10 +363,10 @@ def beam_search(graph: dict, start: str, goal: str,
         if g_score > best_cost.get(node, float('inf')):
             continue
 
-        explored += 1
+        expanded += 1
 
         if node == goal:
-            return SearchResult(path, g_score, explored)
+            return SearchResult(path, g_score, expanded, generated, max_frontier)
 
         # Generar sucesores
         successors = []
@@ -361,10 +379,13 @@ def beam_search(graph: dict, start: str, goal: str,
             if new_g < best_cost.get(neighbor, float('inf')):
                 best_cost[neighbor] = new_g
                 successors.append((new_f, new_g, next(tie_breaker), neighbor, path + [neighbor]))
+                generated += 1
 
         # Agregar sucesores a la frontera
         for successor in successors:
             heappush(frontier, successor)
+
+        max_frontier = max(max_frontier, len(frontier))
 
         # Mantener frontera limitada a k elementos
         if len(frontier) > k:
@@ -374,4 +395,4 @@ def beam_search(graph: dict, start: str, goal: str,
             frontier = frontier_list[:k]
             heapify(frontier)
 
-    return SearchResult(None, float('inf'), explored)
+    return SearchResult(None, float('inf'), expanded, generated, max_frontier)

@@ -150,12 +150,13 @@ class TestExecutor:
                     'exito': result.path is not None,
                     'ruta': result.path if result.path else [],
                     'costo': result.cost if result.path else float('inf'),
-                    'estados_generados': result.explored,
+                    'estados_generados': result.generated,
+                    'estados_expandidos': result.expanded,
+                    'maximo_frontera': result.max_frontier,
                 }
 
                 if result.path:
                     algo_result['movimientos'] = len(result.path) - 1
-                    algo_result['maximo_frontera'] = result.explored
 
                     # Para BFS/DFS que no usan costos, calcular costo real de la ruta
                     if algo_name in ['BFS', 'DFS']:

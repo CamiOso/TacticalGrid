@@ -201,7 +201,9 @@ class TestExecutor:
             raise ValueError(f"Test mode debe ser 'adversarial', se encontró '{test_config['modo']}'")
 
         from src.game.state import GameState, Unit
-        from src.algorithms.adversarial import minimax_with_action, alfabeta_with_action
+        from src.algorithms.adversarial import (
+            minimax_with_action_full, alfabeta_with_action_full,
+        )
         from src.game.utility import create_minimax_eval_function
 
         try:
@@ -224,8 +226,8 @@ class TestExecutor:
                 scenario_data=self.scenario_data,
                 units=units,
                 resource_pos=resource_pos,
-                resource_carrier=None,
-                current_turn='A'
+                resource_carrier=self.scenario.resource_carrier,
+                current_turn=self.scenario.current_turn,
             )
 
             # Crear función de utilidad
@@ -242,8 +244,10 @@ class TestExecutor:
                         successors.append((next_state, str(action)))
                 return successors
 
-            # Ejecutar Minimax y Alfa-Beta
-            profundidad = test_config.get('profundidad', 3)
+            # Ejecutar Minimax y Alfa-Beta.
+            # La profundidad proviene de prueba.profundidad o del campo de juego.
+            profundidad = test_config.get(
+                'profundidad', self.scenario.max_minimax_depth)
 
             results = {
                 'modo': 'adversarial',
@@ -254,28 +258,34 @@ class TestExecutor:
 
             # Minimax
             try:
-                resultado_minimax = minimax_with_action(
+                r = minimax_with_action_full(
                     initial_state, profundidad, True, utility_func, get_successors
                 )
                 results['algoritmos']['Minimax'] = {
-                    'exito': resultado_minimax.best_action is not None,
-                    'valor': resultado_minimax.best_value,
-                    'accion': str(resultado_minimax.best_action) if resultado_minimax.best_action else None,
-                    'nodos_evaluados': resultado_minimax.nodes_evaluated
+                    'exito': r.best_action is not None,
+                    'valor': r.best_value,
+                    'accion': str(r.best_action) if r.best_action else None,
+                    'nodos_generados': r.nodes_generated,
+                    'nodos_evaluados': r.nodes_evaluated,
+                    'nodos_podados': r.pruned,
+                    'profundidad_alcanzada': r.depth_reached,
                 }
             except Exception as e:
                 results['algoritmos']['Minimax'] = {'error': str(e)}
 
             # Alfa-Beta
             try:
-                resultado_alfabeta = alfabeta_with_action(
+                r = alfabeta_with_action_full(
                     initial_state, profundidad, True, utility_func, get_successors
                 )
                 results['algoritmos']['Alfa-Beta'] = {
-                    'exito': resultado_alfabeta.best_action is not None,
-                    'valor': resultado_alfabeta.best_value,
-                    'accion': str(resultado_alfabeta.best_action) if resultado_alfabeta.best_action else None,
-                    'nodos_evaluados': resultado_alfabeta.nodes_evaluated
+                    'exito': r.best_action is not None,
+                    'valor': r.best_value,
+                    'accion': str(r.best_action) if r.best_action else None,
+                    'nodos_generados': r.nodes_generated,
+                    'nodos_evaluados': r.nodes_evaluated,
+                    'nodos_podados': r.pruned,
+                    'profundidad_alcanzada': r.depth_reached,
                 }
             except Exception as e:
                 results['algoritmos']['Alfa-Beta'] = {'error': str(e)}
@@ -309,7 +319,7 @@ class TestExecutor:
 
         import time
         from src.game.state import GameState, Unit
-        from src.algorithms.adversarial import alfabeta_with_action
+        from src.algorithms.adversarial import alfabeta_with_action_full
         from src.game.utility import create_minimax_eval_function
 
         try:
@@ -320,7 +330,9 @@ class TestExecutor:
                     team=unit_data.get('bando', 'A'),
                     row=unit_data['fila'],
                     col=unit_data['columna'],
-                    carries_resource=False,
+                    carries_resource=(
+                        self.scenario.resource_carrier == unit_data['id']
+                    ),
                 ))
 
             resource_pos = self.scenario.resource_position
@@ -348,30 +360,36 @@ class TestExecutor:
 
             turns = []
             ganador = None
+            motivo_fin = 'limite_turnos'
 
             for turno in range(max_turns):
                 if state.is_terminal():
                     ganador = state.get_winner()
+                    motivo_fin = 'ganador' if ganador else 'bloqueo'
                     break
 
                 team = state.current_turn
                 eval_func = create_minimax_eval_function(team=team, strategy='balanced')
 
                 start_t = time.perf_counter()
-                result = alfabeta_with_action(state, depth, True, eval_func, get_successors)
+                result = alfabeta_with_action_full(
+                    state, depth, True, eval_func, get_successors)
                 elapsed = time.perf_counter() - start_t
 
                 if result.best_action is None:
+                    motivo_fin = 'sin_acciones'
                     break
 
-                # Aplicar la acción elegida (misma acción devuelta para MAX/MIN)
+                # Aplicar la acción elegida
                 applied = False
                 for unit in state.get_units_by_team(team):
-                    if str(result.best_action) in [str(a) for a in state.get_valid_actions(unit.id)]:
+                    valid = [str(a) for a in state.get_valid_actions(unit.id)]
+                    if str(result.best_action) in valid:
                         if state.apply_action(unit.id, _action_from_str(result.best_action)):
                             applied = True
                             break
                 if not applied:
+                    motivo_fin = 'accion_invalida'
                     break
 
                 turns.append({
@@ -379,7 +397,9 @@ class TestExecutor:
                     'bando': team,
                     'accion': str(result.best_action),
                     'valor': result.best_value,
+                    'nodos_generados': result.nodes_generated,
                     'nodos_evaluados': result.nodes_evaluated,
+                    'nodos_podados': result.pruned,
                     'tiempo_ms': round(elapsed * 1000, 3),
                 })
 
@@ -389,6 +409,7 @@ class TestExecutor:
                 'max_turnos': max_turns,
                 'turnos_jugados': len(turns),
                 'ganador': ganador or state.get_winner(),
+                'motivo_fin': motivo_fin,
                 'secuencia': turns,
             }
 
@@ -465,17 +486,27 @@ class TestExecutor:
             if 'error' in results:
                 output.append(f"\n❌ Error: {results['error']}")
             else:
-                output.append(f"\n{'Algoritmo':<15} {'Éxito':<8} {'Valor':<15} {'Acción':<20}")
-                output.append("-" * 60)
+                output.append(
+                    f"\n{'Algoritmo':<12} {'Éxito':<8} {'Valor':<12} {'Generados':<10} "
+                    f"{'Evaluados':<10} {'Podados':<9} {'Prof.':<7} {'Acción':<20}")
+                output.append("-" * 90)
 
                 for algo_name, algo_result in results['algoritmos'].items():
                     if 'error' in algo_result:
-                        output.append(f"{algo_name:<15} {'❌':<8} {'Error':<15} {algo_result['error']:<20}")
+                        output.append(
+                            f"{algo_name:<12} {'❌':<8} {'Error':<12} {algo_result['error']:<20}")
                     else:
                         exito = "✅" if algo_result.get('exito') else "❌"
                         valor = algo_result.get('valor', '-')
+                        gen = algo_result.get('nodos_generados', '-')
+                        ev = algo_result.get('nodos_evaluados', '-')
+                        pod = algo_result.get('nodos_podados', '-')
+                        prof = algo_result.get('profundidad_alcanzada', '-')
                         accion = algo_result.get('accion', 'None')
-                        output.append(f"{algo_name:<15} {exito:<8} {str(valor):<15} {str(accion):<20}")
+                        output.append(
+                            f"{algo_name:<12} {exito:<8} {str(valor):<12} {str(gen):<10} "
+                            f"{str(ev):<10} {str(pod):<9} {str(prof):<7} {str(accion):<20}"
+                        )
 
         elif results['modo'] == 'partida':
             output.append(f"\nConfiguración:")
@@ -487,13 +518,18 @@ class TestExecutor:
             else:
                 output.append(f"\nTurnos jugados: {results.get('turnos_jugados', '-')}")
                 output.append(f"Ganador: {results.get('ganador', '-')}")
-                output.append(f"\n{'Turno':<8} {'Bando':<8} {'Acción':<20} {'Valor':<12} {'Nodos':<8} {'Tiempo(ms)':<12}")
-                output.append("-" * 70)
+                output.append(f"Motivo de fin: {results.get('motivo_fin', '-')}")
+                output.append(
+                    f"\n{'Turno':<7} {'Bando':<7} {'Acción':<20} {'Valor':<12} "
+                    f"{'Gen':<7} {'Eval':<7} {'Pod':<7} {'Tiempo(ms)':<12}")
+                output.append("-" * 85)
 
                 for t in results.get('secuencia', []):
                     output.append(
-                        f"{t['turno']:<8} {t['bando']:<8} {t['accion']:<20} "
-                        f"{str(t['valor']):<12} {str(t['nodos_evaluados']):<8} {str(t['tiempo_ms']):<12}"
+                        f"{t['turno']:<7} {t['bando']:<7} {t['accion']:<20} "
+                        f"{str(t['valor']):<12} {str(t['nodos_generados']):<7} "
+                        f"{str(t['nodos_evaluados']):<7} {str(t['nodos_podados']):<7} "
+                        f"{str(t['tiempo_ms']):<12}"
                     )
 
         output.append("\n" + "=" * 70)

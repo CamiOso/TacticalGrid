@@ -15,17 +15,32 @@ class GameState:
 
 
 class AdversarialResult:
-    """Resultado de búsqueda adversarial."""
+    """Resultado de búsqueda adversarial.
+
+    Atributos:
+        best_value: Valor minimax/alfa-beta del estado analizado.
+        best_action: Acción recomendada (o None si no hay sucesores).
+        nodes_evaluated: Nodos en los que se calculó la utilidad.
+        nodes_generated: Nodos totales generados durante la exploración.
+        pruned: Ramas evitadas por la poda alfa-beta (solo alfa-beta).
+        depth_reached: Profundidad efectiva alcanzada en la búsqueda.
+    """
 
     def __init__(self, best_value: int, best_action: Optional[str] = None,
-                 nodes_evaluated: int = 0):
+                 nodes_evaluated: int = 0, nodes_generated: int = 0,
+                 pruned: int = 0, depth_reached: int = 0):
         self.best_value = best_value
         self.best_action = best_action
         self.nodes_evaluated = nodes_evaluated
+        self.nodes_generated = nodes_generated
+        self.pruned = pruned
+        self.depth_reached = depth_reached
 
     def __repr__(self):
         action_str = f", action={self.best_action}" if self.best_action else ""
-        return f"AdversarialResult(value={self.best_value}{action_str}, nodes={self.nodes_evaluated})"
+        return (f"AdversarialResult(value={self.best_value}{action_str}, "
+                f"evaluated={self.nodes_evaluated}, generated={self.nodes_generated}, "
+                f"pruned={self.pruned})")
 
 
 def minimax(state: dict, depth: int, is_maximizing: bool,
@@ -324,3 +339,201 @@ def alfabeta_with_action(state: dict, depth: int, is_maximizing: bool,
                 break
 
         return AdversarialResult(best_value, best_action, total_nodes)
+
+
+def minimax_full(state, depth: int, is_maximizing: bool,
+                 eval_func: Callable, get_successors: Callable) -> dict:
+    """Minimax que retorna métricas completas: generados/evaluados/profundidad.
+
+    Retorna un diccionario {'value', 'evaluated', 'generated', 'depth'}.
+    """
+    is_terminal = (state.get('is_terminal', False) if isinstance(state, dict)
+                   else state.is_terminal())
+
+    if depth == 0 or is_terminal:
+        return {'value': eval_func(state), 'evaluated': 1, 'generated': 1, 'depth': 0}
+
+    successors = get_successors(state, is_maximizing=is_maximizing)
+    generated = 1  # el propio nodo
+    evaluated = 0
+    max_depth = 0
+
+    if is_maximizing:
+        best = float('-inf')
+        for successor_state, _ in successors:
+            child = minimax_full(successor_state, depth - 1, False, eval_func, get_successors)
+            best = max(best, child['value'])
+            generated += child['generated']
+            evaluated += child['evaluated']
+            max_depth = max(max_depth, 1 + child['depth'])
+        if not successors:
+            return {'value': eval_func(state), 'evaluated': 1, 'generated': generated, 'depth': 0}
+        return {'value': best, 'evaluated': evaluated, 'generated': generated, 'depth': max_depth}
+    else:
+        best = float('inf')
+        for successor_state, _ in successors:
+            child = minimax_full(successor_state, depth - 1, True, eval_func, get_successors)
+            best = min(best, child['value'])
+            generated += child['generated']
+            evaluated += child['evaluated']
+            max_depth = max(max_depth, 1 + child['depth'])
+        if not successors:
+            return {'value': eval_func(state), 'evaluated': 1, 'generated': generated, 'depth': 0}
+        return {'value': best, 'evaluated': evaluated, 'generated': generated, 'depth': max_depth}
+
+
+def alfabeta_full(state, depth: int, is_maximizing: bool,
+                  alpha: float, beta: float,
+                  eval_func: Callable, get_successors: Callable) -> dict:
+    """Alfa-beta que retorna métricas completas incluyendo nodos podados.
+
+    Retorna un diccionario {'value', 'evaluated', 'generated', 'pruned', 'depth'}.
+    """
+    is_terminal = (state.get('is_terminal', False) if isinstance(state, dict)
+                   else state.is_terminal())
+
+    if depth == 0 or is_terminal:
+        return {'value': eval_func(state), 'evaluated': 1, 'generated': 1,
+                'pruned': 0, 'depth': 0}
+
+    successors = get_successors(state, is_maximizing=is_maximizing)
+    generated = 1
+    evaluated = 0
+    pruned = 0
+    max_depth = 0
+
+    if is_maximizing:
+        best = float('-inf')
+        for i, (successor_state, _) in enumerate(successors):
+            child = alfabeta_full(successor_state, depth - 1, False, alpha, beta,
+                                  eval_func, get_successors)
+            best = max(best, child['value'])
+            generated += child['generated']
+            evaluated += child['evaluated']
+            pruned += child['pruned']
+            max_depth = max(max_depth, 1 + child['depth'])
+            alpha = max(alpha, child['value'])
+            if beta <= alpha:
+                # las ramas restantes de este nodo no se generan ni exploran
+                pruned += len(successors) - (i + 1)
+                break
+        if not successors:
+            return {'value': eval_func(state), 'evaluated': 1, 'generated': generated,
+                    'pruned': pruned, 'depth': 0}
+        return {'value': best, 'evaluated': evaluated, 'generated': generated,
+                'pruned': pruned, 'depth': max_depth}
+    else:
+        best = float('inf')
+        for i, (successor_state, _) in enumerate(successors):
+            child = alfabeta_full(successor_state, depth - 1, True, alpha, beta,
+                                  eval_func, get_successors)
+            best = min(best, child['value'])
+            generated += child['generated']
+            evaluated += child['evaluated']
+            pruned += child['pruned']
+            max_depth = max(max_depth, 1 + child['depth'])
+            beta = min(beta, child['value'])
+            if beta <= alpha:
+                pruned += len(successors) - (i + 1)
+                break
+        if not successors:
+            return {'value': eval_func(state), 'evaluated': 1, 'generated': generated,
+                    'pruned': pruned, 'depth': 0}
+        return {'value': best, 'evaluated': evaluated, 'generated': generated,
+                'pruned': pruned, 'depth': max_depth}
+
+
+def minimax_with_action_full(state, depth: int, is_maximizing: bool,
+                             eval_func: Callable,
+                             get_successors: Callable) -> AdversarialResult:
+    """Minimax que retorna AdversarialResult con métricas completas."""
+    successors = get_successors(state, is_maximizing=is_maximizing)
+
+    if is_maximizing:
+        best_value = float('-inf')
+        best_action = None
+        total_generated = 1
+        total_evaluated = 0
+        max_depth = 0
+        for successor_state, action in successors:
+            child = minimax_full(successor_state, depth - 1, False, eval_func, get_successors)
+            total_generated += child['generated']
+            total_evaluated += child['evaluated']
+            max_depth = max(max_depth, 1 + child['depth'])
+            if child['value'] > best_value:
+                best_value = child['value']
+                best_action = action
+        return AdversarialResult(best_value, best_action, total_evaluated,
+                                 total_generated, 0, max_depth)
+    else:
+        best_value = float('inf')
+        best_action = None
+        total_generated = 1
+        total_evaluated = 0
+        max_depth = 0
+        for successor_state, action in successors:
+            child = minimax_full(successor_state, depth - 1, True, eval_func, get_successors)
+            total_generated += child['generated']
+            total_evaluated += child['evaluated']
+            max_depth = max(max_depth, 1 + child['depth'])
+            if child['value'] < best_value:
+                best_value = child['value']
+                best_action = action
+        return AdversarialResult(best_value, best_action, total_evaluated,
+                                 total_generated, 0, max_depth)
+
+
+def alfabeta_with_action_full(state, depth: int, is_maximizing: bool,
+                              eval_func: Callable,
+                              get_successors: Callable) -> AdversarialResult:
+    """Alfa-beta que retorna AdversarialResult con métricas completas."""
+    successors = get_successors(state, is_maximizing=is_maximizing)
+    alpha = float('-inf')
+    beta = float('inf')
+
+    if is_maximizing:
+        best_value = float('-inf')
+        best_action = None
+        total_generated = 1
+        total_evaluated = 0
+        total_pruned = 0
+        max_depth = 0
+        for i, (successor_state, action) in enumerate(successors):
+            child = alfabeta_full(successor_state, depth - 1, False, alpha, beta,
+                                  eval_func, get_successors)
+            total_generated += child['generated']
+            total_evaluated += child['evaluated']
+            total_pruned += child['pruned']
+            max_depth = max(max_depth, 1 + child['depth'])
+            if child['value'] > best_value:
+                best_value = child['value']
+                best_action = action
+                alpha = max(alpha, child['value'])
+            if beta <= alpha:
+                total_pruned += len(successors) - (i + 1)
+                break
+        return AdversarialResult(best_value, best_action, total_evaluated,
+                                 total_generated, total_pruned, max_depth)
+    else:
+        best_value = float('inf')
+        best_action = None
+        total_generated = 1
+        total_evaluated = 0
+        total_pruned = 0
+        max_depth = 0
+        for i, (successor_state, action) in enumerate(successors):
+            child = alfabeta_full(successor_state, depth - 1, True, alpha, beta,
+                                  eval_func, get_successors)
+            total_generated += child['generated']
+            total_evaluated += child['evaluated']
+            total_pruned += child['pruned']
+            max_depth = max(max_depth, 1 + child['depth'])
+            if child['value'] < best_value:
+                best_value = child['value']
+                best_action = action
+                beta = min(beta, child['value'])
+            if beta <= alpha:
+                total_pruned += len(successors) - (i + 1)
+                break
+        return AdversarialResult(best_value, best_action, total_evaluated,
+                                 total_generated, total_pruned, max_depth)

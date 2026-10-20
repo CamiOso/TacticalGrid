@@ -1538,6 +1538,32 @@ k     Movimientos  Costo  Memoria frontera
 2. A mayor k se conservan más alternativas (mayor memoria), lo que reduce el riesgo de descartar un camino que luego sería conveniente.
 3. El análisis del efecto de restringir k debe hacerse sobre escenarios con decisiones ambiguas, donde un k pequeño sí descarte la ruta óptima; los escenarios actuales son demasiado simples para evidenciarlo.
 
+### 11.4 Casos mínimos restantes (4, 6, 7, 8, 9, 10)
+
+El script `casos_minimos.py` reproduce de forma automática todos los casos mínimos del enunciado. A continuación se resumen los resultados de los casos no cubiertos en los apartados anteriores.
+
+**Caso 4 — Comparación de heurísticas** (`terrenos_costosos.json`, 5×5):
+
+```
+Heurística                       Costo   Expandidos
+──────────────────────────────────────────────────
+Manhattan (admisible)            8       9
+Manhattan ponderada (admisible)  8       9
+Nula h=0 (equivale a UCS)        8       15
+```
+
+La heurística nula se expande como UCS (15 nodos); Manhattan y su variante ponderada (con `min_cost=1`) guían la búsqueda y reducen la expansión a 9 nodos.
+
+**Caso 6 — Estado compuesto:** una unidad en la misma posición física recibe utilidad distinta según porte o no el recurso. En `ejemplo_basico.json`, A1 en (0,0) obtiene utilidad 85.0 sin portar y 1000.0 portando (estrategia simple). Esto demuestra que la posesión del recurso distingue estados con la misma posición.
+
+**Caso 7 — Decisión adversarial:** sobre `adversarial_simple.json`, la mejor acción según Minimax (profundidad 3) es `MOVE_DOWN` con valor 550.0, no necesariamente "avanzar directo al recurso", pues la decisión pondera la respuesta del adversario.
+
+**Caso 8 — Minimax vs. Alfa-Beta:** ambos devuelven la misma acción (`MOVE_DOWN`) y el mismo valor (550.0), pero Alfa-Beta evalúa menos nodos (19 generados / 12 evaluados en Minimax frente a 15 generados / 9 evaluados / 1 podado en Alfa-Beta).
+
+**Caso 9 — Orden de acciones:** al invertir el orden de generación de sucesores, la cantidad de poda y la acción seleccionada pueden cambiar (en este escenario, `MOVE_DOWN` en orden normal frente a `MOVE_RIGHT` con orden invertido, por desempate). Esto evidencia que el orden de sucesores influye en la poda de Alfa-Beta.
+
+**Caso 10 — Profundidad:** al variar la profundidad de 1 a 4, el valor y la cantidad de nodos generados cambian (generados: 3, 7, 19, 49), mostrando el efecto del horizonte de búsqueda sobre la decisión.
+
 ---
 
 ## 12. ANÁLISIS DE COMPLEJIDAD
@@ -1603,21 +1629,18 @@ Beam es ~500× más rápido (pero puede no ser óptimo)
 ### 13.1 Limitaciones Actuales
 
 1. **Terminación de partida en casos no ganadores**
-   - El modo de partida por turnos está implementado con `TestExecutor.execute_partida_test()`: cada bando juega con alfa-beta y la partida termina al detectarse un ganador o al alcanzarse el límite de turnos. En tableros donde la utilidad simple no conduce a entregar el recurso, la partida puede agotar el límite de turnos sin ganador; esto refleja la limitación de la función de utilidad, no del motor.
+   - El modo de partida por turnos está implementado con `TestExecutor.execute_partida_test()`: cada bando juega con alfa-beta y la partida termina al detectarse un ganador, un bloqueo (el bando al que le toca no tiene acciones válidas) o al alcanzarse el límite de turnos. En tableros donde la utilidad simple no conduce a entregar el recurso, la partida puede agotar el límite de turnos sin ganador; esto refleja la limitación de la función de utilidad, no del motor.
 
-2. **Reglas deterministas de bloqueo / pérdida del portador pendientes**
-   - El enunciado exige definir reglas para bloqueos, ausencia de ruta válida o pérdida del portador. Actualmente `get_valid_actions` simplemente no devuelve movimientos si no hay celdas disponibles, sin una regla explícita de resolución o fin de partida.
+2. **Reglas de bloqueo básicas**
+   - `GameState.is_terminal()` considera bloqueo cuando el bando del turno no tiene acciones válidas, y `is_carrier_stuck()` detecta al portador rodeado. Reglas más elaboradas (por ejemplo, captura del portador por contacto) no están modeladas.
 
-3. **Métricas adversariales parciales**
-   - Minimax/αβ reportan nodos evaluados, valor y acción; faltan mediciones de nodos podados, profundidad alcanzada y tiempo en el reporte estructurado.
+3. **Segunda heurística propia por documentar en el informe**
+   - Se dispone de Manhattan (admisible, 4 direcciones) y de la heurística propia `manhattan_weighted_by_terrain` (admisible). Euclidean/Chebyshev están documentadas como no admisibles para 4 direcciones. La justificación formal de la heurística ponderada está en `heuristics.py`; falta trasladarla con más detalle al informe de sustentación.
 
-4. **Segunda heurística propia por justificar formalmente**
-   - Se dispone de Manhattan (admisible, 4 direcciones) y de Euclidean/Chebyshev (no admisibles para 4 direcciones). Está pendiente formalizar una segunda heurística de diseño propio justificada para A*.
-
-5. **Escenarios estáticos e información perfecta**
+4. **Escenarios estáticos e información perfecta**
    - El mapa no cambia durante la búsqueda y los algoritmos conocen el mapa completo.
 
-6. **Sin planificación multi-agente ni replanificación**
+5. **Sin planificación multi-agente ni replanificación**
    - Cada unidad se planifica de forma independiente y no se coordina con las demás.
 
 ### 13.2 Posibles Extensiones

@@ -189,13 +189,13 @@ class GameState:
         return True
 
     def is_terminal(self) -> bool:
-        """Verifica si el juego terminó."""
-        resource_pos = self.get_resource_position()
-        for team, base_pos in self.bases.items():
-            if resource_pos == base_pos:
-                for unit in self.get_units_by_team(team):
-                    if unit.position() == base_pos and unit.carries_resource:
-                        return True
+        """Verifica si el juego terminó (ganador o sin movimientos válidos)."""
+        if self.get_winner() is not None:
+            return True
+        # Regla de bloqueo: si el bando al que le toca no tiene ninguna acción
+        # válida (movimiento, recoger o soltar), la partida termina en bloqueo.
+        if not self.has_valid_moves(self.current_turn):
+            return True
         return False
 
     def get_winner(self) -> Optional[str]:
@@ -207,6 +207,19 @@ class GameState:
                     if unit.position() == base_pos and unit.carries_resource:
                         return team
         return None
+
+    def is_carrier_stuck(self) -> bool:
+        """Verifica si la unidad portadora del recurso está rodeada de celdas
+        no transitables u ocupadas (es decir, sin movimientos válidos)."""
+        if self.resource_carrier is None:
+            return False
+        unit = self.get_unit(self.resource_carrier)
+        if unit is None:
+            return False
+        moves = [a for a in self.get_valid_actions(unit.id)
+                 if a in (Action.MOVE_UP, Action.MOVE_DOWN,
+                          Action.MOVE_LEFT, Action.MOVE_RIGHT)]
+        return len(moves) == 0
 
     def has_valid_moves(self, team: str) -> bool:
         """Verifica si un equipo tiene movimientos válidos."""

@@ -53,7 +53,15 @@ python -m pytest tests/ -v
 
 Ejecuta las 86 pruebas de la suite.
 
-### 3.5 Generar visualizaciones HTML
+### 3.5 Demostrar los casos mínimos del enunciado
+
+```bash
+python casos_minimos.py
+```
+
+Reproduce los 10 casos mínimos del enunciado (BFS vs DFS, ruta corta vs económica, obstáculo y heurística, comparación de heurísticas, Beam Search, estado compuesto, decisión adversarial, Minimax vs Alfa-Beta, orden de acciones y profundidad).
+
+### 3.6 Generar visualizaciones HTML
 
 ```bash
 python visualize_search.py
@@ -89,7 +97,9 @@ Modos de `prueba.modo`:
 
 Para una prueba de búsqueda, la salida muestra por algoritmo: éxito, movimientos, costo, estados generados, estados expandidos y tamaño máximo de la frontera.
 
-Para una partida, la salida muestra la secuencia de turnos con la acción elegida por cada bando, el valor, los nodos evaluados y el tiempo por decisión.
+Para una prueba adversarial, la salida muestra por algoritmo: éxito, valor, nodos generados, nodos evaluados, nodos podados, profundidad alcanzada y la acción seleccionada.
+
+Para una partida, la salida muestra la secuencia de turnos con la acción elegida por cada bando, el valor, los nodos generados/evaluados/podados y el tiempo por decisión, además del ganador y el motivo de fin (ganador, bloqueo o límite de turnos).
 
 ## 6. Verificación de soluciones
 

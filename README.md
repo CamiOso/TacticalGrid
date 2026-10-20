@@ -141,6 +141,7 @@ tests/test_beam_search.py::test_beam_search_k1 PASSED
 ### **OPCIÓN 4: Ejecutar ejemplos específicos**
 
 ```bash
+python casos_minimos.py           # Demuestra los 10 casos mínimos del enunciado
 python examples_search.py          # Ver cómo trabajan BFS/DFS/UCS/A*
 python examples_adversarial.py     # Ver Minimax y Alfa-Beta
 python examples_agents.py          # Ver agentes inteligentes

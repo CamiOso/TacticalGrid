@@ -48,10 +48,11 @@ Para responder adecuadamente a estas preguntas, el proyecto implementó:
 **Heurísticas para A*:**
 - Manhattan (admisible, 4 direcciones)
 - Manhattan ponderada por costo mínimo (heurística propia, admisible)
+- `distancia_bfs` (heurística 2: pasos reales rodeando muros × costo mínimo, admisible y consistente)
 - Euclidean y Chebyshev (documentadas como no admisibles para 4 direcciones)
 
 **Modos de prueba:**
-- `busqueda`: resolver una navegación con BFS, DFS, UCS o A*.
+- `busqueda`: resolver una navegación con BFS, DFS, UCS, A* o Beam Search.
 - `adversarial`: evaluar un estado con Minimax/Alfa-Beta y seleccionar una acción.
 - `partida`: jugar una partida por turnos con alfa-beta hasta ganador o límite de turnos.
 
@@ -66,9 +67,11 @@ Para responder adecuadamente a estas preguntas, el proyecto implementó:
 - Generación de visualizaciones HTML del mapa y del camino encontrado
 
 **Sistema Completo:**
-- 86 pruebas automatizadas cubriendo todos los componentes
+- 111 pruebas automatizadas cubriendo todos los componentes
+- Mapas de desarrollo 20×20 con 3 unidades por bando (requisito del enunciado)
 - Arquitectura de 5 capas con separación clara de responsabilidades
-- Documentación formal del sistema
+- Documentación formal del sistema (con docstrings de ingeniería)
+- Punto de entrada unificado `start.py` con selección del algoritmo en tiempo de ejecución
 
 ### 1.4 Metodología Propuesta
 
@@ -303,7 +306,7 @@ visualizer.print_complete_visualization(
 )
 ```
 
-Esta visualización se integra automáticamente en `run_tests.py`, por lo que cada ejecución muestra el mapa ASCII.
+Esta visualización se integra automáticamente en `start.py`, por lo que cada ejecución muestra el mapa ASCII.
 
 ### 2.5 Agentes Integrados con Escenarios JSON
 
@@ -1540,7 +1543,7 @@ k     Movimientos  Costo  Memoria frontera
 
 ### 11.4 Casos mínimos restantes (4, 6, 7, 8, 9, 10)
 
-El script `casos_minimos.py` reproduce de forma automática todos los casos mínimos del enunciado. A continuación se resumen los resultados de los casos no cubiertos en los apartados anteriores.
+El script `scripts/casos_minimos.py` reproduce de forma automática todos los casos mínimos del enunciado. A continuación se resumen los resultados de los casos no cubiertos en los apartados anteriores.
 
 **Caso 4 — Comparación de heurísticas** (`terrenos_costosos.json`, 5×5):
 
@@ -1634,8 +1637,8 @@ Beam es ~500× más rápido (pero puede no ser óptimo)
 2. **Reglas de bloqueo básicas**
    - `GameState.is_terminal()` considera bloqueo cuando el bando del turno no tiene acciones válidas, y `is_carrier_stuck()` detecta al portador rodeado. Reglas más elaboradas (por ejemplo, captura del portador por contacto) no están modeladas.
 
-3. **Segunda heurística propia por documentar en el informe**
-   - Se dispone de Manhattan (admisible, 4 direcciones) y de la heurística propia `manhattan_weighted_by_terrain` (admisible). Euclidean/Chebyshev están documentadas como no admisibles para 4 direcciones. La justificación formal de la heurística ponderada está en `heuristics.py`; falta trasladarla con más detalle al informe de sustentación.
+3. **Segunda heurística propia**
+   - Además de Manhattan (admisible, 4 direcciones), se implementan dos heurísticas propias: `manhattan_weighted_by_terrain` (Manhattan escalada por el costo mínimo transitable, admisible) y `distancia_bfs` (número real de pasos hasta el objetivo calculado con un BFS que respeta los muros, escalado por el costo mínimo; admisible, consistente y dominante sobre Manhattan). Euclidean/Chebyshev están documentadas como no admisibles para 4 direcciones. La justificación formal de cada una está en `src/algorithms/heuristics.py` con docstrings de ingeniería.
 
 4. **Escenarios estáticos e información perfecta**
    - El mapa no cambia durante la búsqueda y los algoritmos conocen el mapa completo.
@@ -1673,7 +1676,7 @@ De acuerdo con el enunciado, el uso de IA generativa debe declararse y quedar tr
 
 - **Uso declarado:** Sí. Se utilizó IA generativa como herramienta de apoyo durante el desarrollo (borradores de docstrings, esbozos de pseudocódigo y redacción inicial de este documento).
 - **Alcance:** La IA contribuyó en la estructura y redacción de documentación y en la generación de ejemplos de prueba iniciales. Las ecuaciones, invariantes y resultados numéricos finales fueron verificados ejecutando el código real.
-- **Validación del estudiante:** Todo el código fue ejecutado y validado con la suite de pruebas (86 pruebas en pytest). Los resultados experimentales reportados en la sección 11 se obtuvieron ejecutando `TestExecutor` sobre los escenarios y no de estimaciones de la IA.
+- **Validación del estudiante:** Todo el código fue ejecutado y validado con la suite de pruebas (111 pruebas en pytest). Los resultados experimentales reportados en la sección 11 se obtuvieron ejecutando `TestExecutor` sobre los escenarios y no de estimaciones de la IA.
 - **Responsabilidad:** El autor revisó y corrigió cada método, y está en capacidad de explicar, modificar y defender el código.
 
 ---

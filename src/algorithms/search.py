@@ -4,23 +4,25 @@ from collections import deque
 from heapq import heappush, heappop, heapify
 from typing import List, Dict, Optional, Callable, Tuple
 from itertools import count
+import time
 
 
 class SearchResult:
     """Resultado de una búsqueda."""
 
-    def __init__(self, path: Optional[List], cost: int, expanded: int, generated: int = None, max_frontier: int = None):
+    def __init__(self, path: Optional[List], cost: int, expanded: int, generated: int = None, max_frontier: int = None, elapsed_ms: float = None):
         self.path = path
         self.cost = cost
         self.expanded = expanded  # Nodos expandidos (sacados de la frontera)
         self.generated = generated if generated is not None else expanded  # Nodos generados (creados)
         self.max_frontier = max_frontier if max_frontier is not None else expanded  # Máximo tamaño de frontera
+        self.elapsed_ms = elapsed_ms if elapsed_ms is not None else 0.0  # Tiempo de ejecución (ms)
         # Compatibilidad: explored ahora mapea a expanded
         self.explored = expanded
 
     def __repr__(self):
         if self.path:
-            return f"SearchResult(path_length={len(self.path)-1}, cost={self.cost}, expanded={self.expanded}, generated={self.generated})"
+            return f"SearchResult(path_length={len(self.path)-1}, cost={self.cost}, expanded={self.expanded}, generated={self.generated}, time={self.elapsed_ms:.3f}ms)"
         return f"SearchResult(No solution found, expanded={self.expanded}, generated={self.generated})"
 
 
@@ -53,10 +55,17 @@ def bfs(graph: Dict, start, goal) -> SearchResult:
     Returns:
         SearchResult con el camino, costo y nodos explorados
 
-    **IA**:
-    - Usa: Cola FIFO y conjunto visited.
-    - Interviene: Se consultó IA para revisar la reconstrucción del camino.
-    - Validar: El estudiante verificó optimalidad en pasos con pruebas unitarias.
+    Purpose:           encontrar el camino con el menor número de pasos en un
+                       grafo sin pesos, expandiendo por niveles con una cola FIFO.
+    Preconditions:     un grafo de adyacencia y nodos hashables; el costo del
+                       movimiento no interviene (se trata por número de pasos).
+    Postconditions:    devuelve el camino óptimo en pasos, o None si no hay ruta;
+                       no modifica el grafo.
+    Complexity:        O(V + E) en tiempo y O(V) en espacio (cola y visitados).
+    AI usage:          Yes
+    AI intervention:   se consultó IA para revisar la reconstrucción del camino y
+                       la semántica de visitado al generar, no al sacar.
+    Student validation: se verificó con tests/test_search.py y tests/test_casos_minimos.py.
     """
     if start == goal:
         return SearchResult([start], 0, 1, 1, 1)
@@ -112,10 +121,16 @@ def dfs(graph: Dict, start, goal) -> SearchResult:
     Returns:
         SearchResult con el camino, costo y nodos explorados
 
-    **IA**:
-    - Usa: Pila LIFO y conjunto visited.
-    - Interviene: Se consultó IA para revisar la exploración en profundidad.
-    - Validar: El estudiante verificó el comportamiento con pruebas unitarias.
+    Purpose:           explorar en profundidad (pila LIFO) sin garantizar el
+                       camino más corto; útil por su menor uso de memoria.
+    Preconditions:     grafo de adyacencia; los sucesores se toman en el orden
+                       dado por el grafo, lo que define qué camino devuelve.
+    Postconditions:    devuelve un camino (no necesariamente óptimo) o None si
+                       no existe ruta; no modifica el grafo.
+    Complexity:        O(V + E) en tiempo y O(h) en espacio (h = profundidad).
+    AI usage:          Yes
+    AI intervention:   se consultó IA para revisar la exploración en profundidad.
+    Student validation: se verificó con tests/test_search.py y tests/test_casos_minimos.py.
     """
     if start == goal:
         return SearchResult([start], 0, 1, 1, 1)
@@ -180,6 +195,18 @@ def ucs(graph: Dict, start: str, goal: str,
 
     Returns:
         SearchResult con el camino, costo y nodos explorados
+
+    Purpose:           encontrar el camino de costo acumulado mínimo expandiendo
+                       el nodo de menor g(n), sin usar heurística.
+    Preconditions:     costos con valores positivos para todas las aristas; el
+                       grafo sin pesos de arista implícitos da costo 1 por defecto.
+    Postconditions:    devuelve el camino óptimo en costo (o None si no hay ruta);
+                       un estado se reinserta si se alcanza con menor g.
+    Complexity:        O((V + E) log V) en tiempo y O(V) en espacio (heap).
+    AI usage:          Yes
+    AI intervention:   se consultó IA para la eliminación perezosa y el desempate
+                       con contador creciente (evita comparar estados en el heap).
+    Student validation: se verificó con tests/test_search.py y tests/test_casos_minimos.py.
     """
     if start == goal:
         return SearchResult([start], 0, 1, 1, 1)
@@ -265,6 +292,18 @@ def a_star(graph: Dict, start: str, goal: str,
 
     Returns:
         SearchResult con el camino, costo y nodos explorados
+
+    Purpose:           encontrar el camino de costo mínimo de forma más eficiente
+                       que UCS, guiando la búsqueda con f(n) = g(n) + h(n).
+    Preconditions:     heurística admisible (nunca sobrestima) para garantizar
+                       optimalidad; costos positivos en las aristas.
+    Postconditions:    devuelve el camino óptimo (o None si no hay ruta); explora
+                       igual o menos que UCS cuando h es admisible y consistente.
+    Complexity:        O((V + E) log V) en tiempo, O(V) en espacio.
+    AI usage:          Yes
+    AI intervention:   se consultó IA para el diseño de f(n) y las condiciones de
+                       admisibilidad de cada heurística.
+    Student validation: se verificó con tests/test_search.py y tests/test_heuristica_bfs.py.
     """
     if costs is None:
         costs = {}
@@ -362,6 +401,16 @@ def beam_search(graph: dict, start: str, goal: str,
 
     Returns:
         SearchResult con el camino encontrado
+
+    Purpose:           buscar con memoria limitada, conservando solo los k mejores
+                       nodos de la frontera según f(n) = g(n) + h(n).
+    Preconditions:     k entero >= 1; heurística para ordenar los candidatos.
+    Postconditions:    devuelve un camino o None (no es completo ni óptimo);
+                       la frontera nunca supera k elementos tras podar.
+    Complexity:        O(b*k) por nivel; O(k) en espacio.
+    AI usage:          Yes
+    AI intervention:   se consultó IA para la poda de la frontera y el efecto de k.
+    Student validation: se verificó con tests/test_beam_search.py.
     """
     if costs is None:
         costs = {}

@@ -42,6 +42,16 @@ def manhattan_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
 
     Returns:
         Estimación del costo restante (entero)
+
+    Purpose:           estimar el costo restante como la distancia Manhattan
+                       entre dos celdas (movimiento en 4 direcciones).
+    Preconditions:     pos_a y pos_b son tuplas (fila, columna) dentro del mapa.
+    Postconditions:    devuelve un entero >= 0; h(goal, goal) = 0; no modifica nada.
+    Complexity:        O(1) en tiempo y espacio.
+    AI usage:          Yes
+    AI intervention:   se consultó IA para revisar las condiciones de admisibilidad
+                       (solo admisible con costos >= 1 por paso).
+    Student validation: se verificó con tests/test_casos_minimos.py y tests/test_heuristica_bfs.py.
     """
     return abs(pos_a[0] - pos_b[0]) + abs(pos_a[1] - pos_b[1])
 
@@ -170,6 +180,15 @@ def manhattan_weighted_by_terrain(pos_a: Tuple[int, int], pos_b: Tuple[int, int]
 
     Returns:
         Estimación del costo restante (float)
+
+    Purpose:           estimar el costo restante escalando Manhattan por el costo
+                       mínimo de un paso transitable (heurística propia).
+    Preconditions:     min_cost > 0 (costo mínimo real de los terrenos transitables).
+    Postconditions:    devuelve un valor >= 0; admisible y consistente; no modifica.
+    Complexity:        O(1) en tiempo y espacio.
+    AI usage:          Yes
+    AI intervention:   se consultó IA para la justificación de admisibilidad con c_min.
+    Student validation: se verificó con tests/test_casos_minimos.py.
     """
     manhattan = abs(pos_a[0] - pos_b[0]) + abs(pos_a[1] - pos_b[1])
     return float(manhattan * min_cost)
@@ -244,6 +263,16 @@ def crear_distancia_bfs(graph: Dict, goal: Tuple[int, int],
 
     Returns:
         Función h(estado) -> float (math.inf si el estado es inalcanzable)
+
+    Purpose:           devolver una heurística de distancia real en pasos (un BFS
+                       desde el objetivo, respetando muros) escalada por c_min.
+    Preconditions:     graph contiene el objetivo; min_cost > 0.
+    Postconditions:    h(objetivo) = 0; admisible y consistente; domina a Manhattan.
+    Complexity:        fábrica O(V+E) por el BFS; cada h(estado) O(1).
+    AI usage:          Yes
+    AI intervention:   se consultó IA para el diseño (problema relajado que solo
+                       relaja costos, no muros) y la justificación de admisibilidad.
+    Student validation: se verificó con tests/test_heuristica_bfs.py.
     """
     pasos = {}
     if goal in graph:

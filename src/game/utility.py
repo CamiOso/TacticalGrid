@@ -52,6 +52,16 @@ class UtilityFunction:
         - No considera bloqueos
         - No valúa control del territorio
         - Simplista pero funcional
+
+        Purpose:           evaluar un estado desde la perspectiva de un equipo
+                           usando solo la distancia al recurso/base (estrategia simple).
+        Preconditions:     state es un GameState; team es "A" o "B".
+        Postconditions:    devuelve un float (positivo si favorece a team, negativo
+                           si favorece al rival); no modifica el estado.
+        Complexity:        O(n) con n = número de unidades del equipo.
+        AI usage:          Yes
+        AI intervention:   se consultó IA para el esbozo de las tres estrategias.
+        Student validation: se definió la fórmula y se verificó con tests/test_utility.py.
         """
         # Verificar condiciones terminales
         winner = state.get_winner()

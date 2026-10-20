@@ -193,7 +193,10 @@ Proyecto/
 │   ├── terrenos_costosos.json      # Mapa 5×5 con costos variables
 │   ├── divergencia_bfs_ucs.json    # Caso de estudio: BFS vs UCS
 │   ├── partida_simple.json         # Partida 1 vs 1
-│   └── adversarial_simple.json     # Decisión adversarial
+│   ├── adversarial_simple.json     # Decisión adversarial
+│   ├── mapa_grande.json            # ⭐ Búsqueda 20×20 (3 unidades por bando)
+│   ├── mapa_grande_partida.json    # ⭐ Partida 20×20 (3 unidades por bando)
+│   └── mapa_grande_adversarial.json# ⭐ Adversarial 20×20 (3 unidades por bando)
 ├── scripts/                        # Scripts auxiliares y demos
 │   ├── casos_minimos.py            # 10 casos mínimos del enunciado
 │   ├── examples_search.py          # Ejemplos de búsqueda
@@ -210,6 +213,7 @@ Proyecto/
 │   ├── test_adversarial.py         # Minimax y Alfa-Beta
 │   ├── test_casos_minimos.py       # ⭐ Los 10 casos mínimos como asserts
 │   ├── test_heuristica_bfs.py      # ⭐ Heurística distancia_bfs
+│   ├── test_reglas_de_recurso.py   # ⭐ Reglas de recoger/transportar/soltar/ganar
 │   └── ...                         # game_state, utility, verifier, adaptación
 ├── DOCUMENTO_TECNICO_COMPLETO.md   # Documentación técnica (61KB)
 ├── DOCUMENTO_TECNICO_COMPLETO.html # Versión HTML para PDF

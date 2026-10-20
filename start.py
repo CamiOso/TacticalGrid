@@ -96,6 +96,7 @@ def _resolver_heuristica(nombre, grafo, goal, costos):
 
 def _ejecutar_busqueda(executor, algoritmo="A_ESTRELLA", heuristica="manhattan", k=2):
     """Ejecuta la búsqueda del escenario cargado en el executor y la imprime."""
+    import time
     sc = executor.scenario
     grafo = executor.create_graph_from_scenario()
     costos = executor.create_costs_from_scenario(grafo)
@@ -113,6 +114,7 @@ def _ejecutar_busqueda(executor, algoritmo="A_ESTRELLA", heuristica="manhattan",
         extras = f" (heurística: {heuristica}, k: {k})"
     print(f"Algoritmo elegido: {canonico}{extras}")
 
+    t0 = time.perf_counter()
     if canonico == "BFS":
         resultado = bfs(grafo, start, goal)
     elif canonico == "DFS":
@@ -125,6 +127,7 @@ def _ejecutar_busqueda(executor, algoritmo="A_ESTRELLA", heuristica="manhattan",
     else:  # BEAM
         h = _resolver_heuristica(heuristica, grafo, goal, costos)
         resultado = beam_search(grafo, start, goal, h, k=k, costs=costos)
+    resultado.elapsed_ms = (time.perf_counter() - t0) * 1000.0
 
     print("\n--- Resultado ---")
     if resultado.path is None:
@@ -139,6 +142,7 @@ def _ejecutar_busqueda(executor, algoritmo="A_ESTRELLA", heuristica="manhattan",
         "generados": resultado.generated,
         "expandidos": resultado.expanded,
         "maximo_frontera": resultado.max_frontier,
+        "tiempo_ms": round(resultado.elapsed_ms, 3),
     }
     print(json.dumps(info, ensure_ascii=False, indent=2))
 

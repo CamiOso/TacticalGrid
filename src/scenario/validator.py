@@ -28,6 +28,17 @@ class ScenarioValidator:
 
         Returns:
             (is_valid, error_messages): True si válido, lista de errores encontrados
+
+        Purpose:           validar un escenario JSON completo según la
+                           especificación del enunciado, acumulando todos los errores.
+        Preconditions:     scenario es un dict con las claves del formato JSON.
+        Postconditions:    devuelve (bool, [errores]); si hay errores en una etapa
+                           precondición, no se evalúan las siguientes. No modifica
+                           el escenario recibido.
+        Complexity:        O(n) sobre el número de celdas y unidades.
+        AI usage:          Yes
+        AI intervention:   se consultó IA para el esquema de las reglas y docstrings.
+        Student validation: se implementó y verificó con tests/test_scenario.py.
         """
         errors = []
 

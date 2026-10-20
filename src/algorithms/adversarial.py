@@ -93,10 +93,16 @@ def minimax(state: dict, depth: int, is_maximizing: bool,
     Returns:
         (valor_minimax, nodos_evaluados)
 
-    **IA**:
-    - Usa: Recursión con alternancia MAX/MIN.
-    - Interviene: Se consultó IA para revisar la recursión y el docstring.
-    - Validar: El estudiante verificó con pruebas de Tic-Tac-Toe.
+    Purpose:           calcular el valor Minimax de un estado asumiendo juego
+                       óptimo de ambos bandos (MAX maximiza, MIN minimiza).
+    Preconditions:     estado con is_terminal definible; eval_func y get_successors
+                       provistas; profundidad >= 0.
+    Postconditions:    devuelve el valor óptimo y el conteo de nodos evaluados;
+                       no modifica el estado.
+    Complexity:        O(b^d) en tiempo, O(b*d) en espacio.
+    AI usage:          Yes
+    AI intervention:   se consultó IA para revisar la recursión MAX/MIN.
+    Student validation: se verificó con tests/test_adversarial.py (Tic-Tac-Toe).
     """
     nodes_evaluated = 1
 
@@ -180,10 +186,16 @@ def alfabeta(state: dict, depth: int, is_maximizing: bool,
     Returns:
         (valor_alfabeta, nodos_evaluados): Idéntico al de Minimax
 
-    **IA**:
-    - Usa: Ventana [alpha, beta] y condiciones de poda.
-    - Interviene: Se consultó IA para revisar la condición beta <= alpha.
-    - Validar: El estudiante verificó equivalencia con Minimax en pruebas.
+    Purpose:           producir el mismo valor que Minimax evaluando menos nodos
+                       mediante la ventana [alpha, beta] y la poda.
+    Preconditions:     alpha = -inf y beta = +inf en la raíz; mismas entradas que
+                       Minimax (estado, profundidad, eval_func, get_successors).
+    Postconditions:    devuelve el mismo valor que Minimax y menos (o igual) nodos
+                       evaluados; no modifica el estado.
+    Complexity:        O(b^(d/2)) en el mejor caso, O(b^d) en el peor.
+    AI usage:          Yes
+    AI intervention:   se consultó IA para la condición de poda beta <= alpha.
+    Student validation: se verificó la equivalencia con Minimax en tests/test_adversarial.py.
     """
     nodes_evaluated = 1
 

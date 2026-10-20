@@ -20,16 +20,40 @@ El proyecto ejecuta **algoritmos de inteligencia artificial** en mapas tácticos
 ### **OPCIÓN 1: Ejecutar y ver TODO en consola (CON VISUALIZACIÓN ASCII)**
 
 ```bash
-python start.py
+python start.py                                            # ejecuta todos los escenarios de scenarios/
+python start.py scenarios/ejemplo_basico.json               # un escenario concreto
+python start.py scenarios/terrenos_costosos.json --algoritmo A_ESTRELLA --heuristica distancia_bfs
+python start.py scenarios/divergencia_bfs_ucs.json --algoritmo BEAM --k 4
+python start.py scenarios/partida_simple.json --algoritmo ALFA_BETA --profundidad 2
+python start.py scenarios/adversarial_simple.json --algoritmo MINIMAX --profundidad 3
 ```
 
 **Qué hace:**
-- ✅ Carga los 3 escenarios JSON automáticamente
+- ✅ Carga los escenarios JSON (todos o uno específico)
 - ✅ **Visualiza cada mapa en ASCII** con terrenos, unidades, bases, recurso
-- ✅ Ejecuta BFS, DFS, UCS, A* en cada uno
-- ✅ Muestra resultados en tabla: movimientos, costo, nodos explorados
-- ✅ Compara algoritmos (ej: "UCS 50% más barato que BFS")
-- ✅ TODO en la pantalla con colores ANSI, sin archivos adicionales
+- ✅ Ejecuta búsqueda (BFS, DFS, UCS, A*, Beam) o adversario (Minimax/alfa-beta) según el modo
+- ✅ Muestra métricas: movimientos, costo, nodos generados/expandidos
+- ✅ Verifica la solución de forma independiente
+- ✅ Sin banderas, muestra un menú para elegir algoritmo/heurística/k (JSON como sugerencia)
+
+**Modos:** el campo `prueba.modo` del escenario decide qué hace:
+
+| Modo | Qué hace |
+|------|----------|
+| `busqueda` | Ejecuta BFS/DFS/UCS/A*/Beam sobre la unidad y objetivo de `prueba` y verifica la solución. |
+| `partida` | Simula la partida por turnos entre dos bandos. |
+| `adversarial` | Evalúa el estado actual y decide una acción con Minimax/alfa-beta. |
+
+**Banderas de `start.py`:**
+
+| Bandera | Valores | Aplica a |
+|---------|---------|----------|
+| `--algoritmo` | `BFS`, `DFS`, `UCS`, `A*`/`ASTAR`, `BEAM` | búsqueda |
+| `--algoritmo` | `MINIMAX` (puro) o `ALFA_BETA` (con poda) | partida/adversarial |
+| `--heuristica` | `manhattan`, `manhattan_pasos`, `distancia_bfs`, `zero` | A* y Beam |
+| `--k` | entero ≥ 1 | Beam Search |
+| `--profundidad` | entero ≥ 1 | partida/adversarial |
+| `--no-preguntar` | — | usa la sugerencia del JSON sin menú |
 
 **Output típico:**
 ```
@@ -69,7 +93,7 @@ A*               ✅       8            8             7
 ### **OPCIÓN 1B: Usar agentes inteligentes integrados con JSON**
 
 ```bash
-python search_with_agents.py
+python scripts/search_with_agents.py
 ```
 
 **Qué hace:**
@@ -90,7 +114,7 @@ python search_with_agents.py
 ### **OPCIÓN 2: Generar visualizaciones HTML (interactivo)**
 
 ```bash
-python visualize_search.py
+python scripts/visualize_search.py
 ```
 
 **Qué genera:**
@@ -98,13 +122,6 @@ python visualize_search.py
 - ✅ Ver terrenos en colores
 - ✅ Ver unidades, bases, recurso
 - ✅ Ver camino encontrado (línea roja)
-
-**Archivos generados:**
-```
-visualizacion_divergencia_bfs_ucs_bfs.html
-visualizacion_divergencia_bfs_ucs_ucs.html
-visualizacion_divergencia_bfs_ucs_a_star.html
-```
 
 **Cómo verlos:**
 1. Los archivos se guardan en el directorio raíz
@@ -122,29 +139,23 @@ python -m pytest tests/ -v
 **Qué verifica:**
 - ✅ Pruebas de escenarios JSON (validación)
 - ✅ Pruebas de búsqueda (BFS, DFS, UCS, A*, Beam Search)
+- ✅ Pruebas de heurísticas (incluida `distancia_bfs`)
 - ✅ Pruebas de estado del juego
 - ✅ Pruebas de funciones de utilidad
 - ✅ Pruebas de adversarios (Minimax, Alfa-Beta)
 - ✅ Pruebas de verificación de soluciones
+- ✅ Pruebas de los 10 casos mínimos del enunciado
 - ✅ Pruebas de adaptación a cambios de escenario
-
-**Output:**
-```
-tests/test_scenario.py::test_scenario_structure PASSED
-tests/test_search.py::test_bfs_simple_graph PASSED
-tests/test_beam_search.py::test_beam_search_k1 PASSED
-... (86 tests total)
-```
 
 ---
 
 ### **OPCIÓN 4: Ejecutar ejemplos específicos**
 
 ```bash
-python casos_minimos.py           # Demuestra los 10 casos mínimos del enunciado
-python examples_search.py          # Ver cómo trabajan BFS/DFS/UCS/A*
-python examples_adversarial.py     # Ver Minimax y Alfa-Beta
-python examples_agents.py          # Ver agentes inteligentes
+python scripts/casos_minimos.py           # Demuestra los 10 casos mínimos del enunciado
+python scripts/examples_search.py          # Ver cómo trabajan BFS/DFS/UCS/A*
+python scripts/examples_adversarial.py     # Ver Minimax y Alfa-Beta
+python scripts/examples_agents.py          # Ver agentes inteligentes
 ```
 
 ---
@@ -153,50 +164,55 @@ python examples_agents.py          # Ver agentes inteligentes
 
 ```
 Proyecto/
+├── start.py                        # ⭐ Punto de entrada único (modos busqueda/partida/adversarial)
 ├── src/
 │   ├── algorithms/
-│   │   ├── search.py              # BFS, DFS, UCS, A*, Beam Search
-│   │   ├── adversarial.py         # Minimax, Alfa-Beta
-│   │   └── heuristics.py          # Manhattan, Euclidean, Chebyshev
+│   │   ├── search.py               # BFS, DFS, UCS, A*, Beam Search
+│   │   ├── adversarial.py          # Minimax, Alfa-Beta
+│   │   └── heuristics.py           # Manhattan, ponderada, distancia_bfs, zero
 │   ├── scenario/
-│   │   ├── schema.py              # Definiciones TypedDict
-│   │   ├── validator.py           # Valida escenarios JSON
-│   │   ├── loader.py              # Carga archivos JSON
-│   │   └── scenario.py            # Acceso a datos del escenario
+│   │   ├── schema.py               # Definiciones TypedDict
+│   │   ├── validator.py            # Valida escenarios JSON
+│   │   ├── loader.py               # Carga archivos JSON
+│   │   └── scenario.py             # Acceso a datos del escenario
 │   ├── game/
-│   │   ├── state.py               # GameState (unidades, acciones, estado)
-│   │   └── utility.py             # Funciones de evaluación Minimax
+│   │   ├── state.py                # GameState (unidades, acciones, estado)
+│   │   └── utility.py              # Funciones de evaluación Minimax
 │   ├── application/
-│   │   ├── test_executor.py       # Ejecuta búsqueda desde JSON
-│   │   ├── solution_verifier.py   # Verifica soluciones válidas
-│   │   ├── visualizer.py          # Genera HTML+Canvas
-│   │   └── ascii_visualizer.py    # ⭐ Visualización ASCII robusta
+│   │   ├── test_executor.py        # Ejecuta búsqueda/adversarial desde JSON
+│   │   ├── solution_verifier.py    # Verifica soluciones válidas
+│   │   ├── visualizer.py           # Genera HTML+Canvas
+│   │   └── ascii_visualizer.py     # ⭐ Visualización ASCII robusta
 │   └── agents/
-│       ├── unit.py                # UnitBFS, UnitDFS
-│       ├── smart_unit.py          # SmartUnit (A*)
-│       ├── tactical_unit.py       # TacticalUnit (Minimax)
-│       └── scenario_agents.py     # ⭐ Agentes integrados con JSON
-├── tests/
-│   ├── test_scenario.py           # Validación de escenarios
-│   ├── test_search.py             # BFS, DFS, UCS, A*
-│   ├── test_game_state.py         # Estado del juego
-│   ├── test_utility.py            # Funciones de utilidad
-│   ├── test_adversarial.py        # Minimax y Alfa-Beta
-│   ├── test_beam_search.py        # Beam Search
-│   ├── test_solution_verifier.py  # Verificación de soluciones
-│   └── test_adaptacion.py         # Adaptación a cambios
+│       ├── unit.py                 # UnitBFS, UnitDFS
+│       ├── smart_unit.py           # SmartUnit (A*)
+│       ├── tactical_unit.py        # TacticalUnit (Minimax)
+│       └── scenario_agents.py      # ⭐ Agentes integrados con JSON
 ├── scenarios/
-│   ├── ejemplo_basico.json        # Mapa 4×4
-│   ├── terrenos_costosos.json     # Mapa 5×5 con costos variables
-│   └── divergencia_bfs_ucs.json   # Caso de estudio: BFS vs UCS
-├── run_tests.py                   # ⭐ Ejecuta escenarios (con visualización ASCII)
-├── search_with_agents.py          # ⭐ Búsqueda con agentes integrados
-├── visualize_search.py            # Genera visualizaciones HTML
-├── examples_search.py             # Ejemplos de búsqueda
-├── examples_adversarial.py        # Ejemplos de Minimax/Alfa-Beta
-├── examples_agents.py             # Ejemplos de agentes
-├── DOCUMENTO_TECNICO_COMPLETO.md  # Documentación técnica (61KB)
-├── DOCUMENTO_TECNICO_COMPLETO.html# Versión HTML para PDF
+│   ├── ejemplo_basico.json         # Mapa 4×4
+│   ├── terrenos_costosos.json      # Mapa 5×5 con costos variables
+│   ├── divergencia_bfs_ucs.json    # Caso de estudio: BFS vs UCS
+│   ├── partida_simple.json         # Partida 1 vs 1
+│   └── adversarial_simple.json     # Decisión adversarial
+├── scripts/                        # Scripts auxiliares y demos
+│   ├── casos_minimos.py            # 10 casos mínimos del enunciado
+│   ├── examples_search.py          # Ejemplos de búsqueda
+│   ├── examples_adversarial.py     # Ejemplos de Minimax/Alfa-Beta
+│   ├── examples_agents.py          # Ejemplos de agentes
+│   ├── examples_with_scenarios.py  # Ejemplos con escenarios JSON
+│   ├── visualize_search.py         # Visualizaciones HTML
+│   ├── interactive.py              # Modo interactivo guiado
+│   └── experimentos_beam_search.py # Experimento Beam Search (k=1,2,4,8)
+├── tests/
+│   ├── test_scenario.py            # Validación de escenarios
+│   ├── test_search.py              # BFS, DFS, UCS, A*
+│   ├── test_beam_search.py         # Beam Search
+│   ├── test_adversarial.py         # Minimax y Alfa-Beta
+│   ├── test_casos_minimos.py       # ⭐ Los 10 casos mínimos como asserts
+│   ├── test_heuristica_bfs.py      # ⭐ Heurística distancia_bfs
+│   └── ...                         # game_state, utility, verifier, adaptación
+├── DOCUMENTO_TECNICO_COMPLETO.md   # Documentación técnica (61KB)
+├── DOCUMENTO_TECNICO_COMPLETO.html # Versión HTML para PDF
 └── README.md
 ```
 

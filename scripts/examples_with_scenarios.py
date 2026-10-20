@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.scenario.loader import ScenarioLoader
 from src.scenario.scenario import Scenario
@@ -58,7 +58,7 @@ def ejemplo_1_cargar_escenario():
     print("EJEMPLO 1: Cargar Escenario JSON")
     print("=" * 70)
 
-    scenario_path = Path(__file__).parent / "scenarios" / "ejemplo_basico.json"
+    scenario_path = Path(__file__).parent.parent / "scenarios" / "ejemplo_basico.json"
 
     try:
         scenario = Scenario(ScenarioLoader.load(scenario_path))
@@ -89,7 +89,7 @@ def ejemplo_2_busqueda_en_escenario():
     print("EJEMPLO 2: Búsqueda en Escenario JSON")
     print("=" * 70)
 
-    scenario_path = Path(__file__).parent / "scenarios" / "ejemplo_basico.json"
+    scenario_path = Path(__file__).parent.parent / "scenarios" / "ejemplo_basico.json"
 
     try:
         scenario = Scenario(ScenarioLoader.load(scenario_path))

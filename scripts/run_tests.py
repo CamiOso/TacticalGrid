@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.application.test_executor import TestExecutor
 from src.application.ascii_visualizer import ASCIIVisualizer
@@ -12,7 +12,7 @@ from src.scenario.scenario import Scenario
 
 def main():
     """Ejecuta pruebas desde todos los escenarios disponibles."""
-    scenarios_dir = Path(__file__).parent / "scenarios"
+    scenarios_dir = Path(__file__).parent.parent / "scenarios"
 
     print("=" * 70)
     print("EXECUTOR DE PRUEBAS - TacticalGrid")

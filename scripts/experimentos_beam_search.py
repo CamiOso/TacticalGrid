@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.scenario.loader import ScenarioLoader
 from src.application.test_executor import TestExecutor
@@ -154,7 +154,7 @@ def main():
     print("\nEste script experimenta con k=1, 2, 4, 8")
     print("Objetivo: Ver cómo k afecta exploración, costo y memoria\n")
 
-    scenarios_dir = Path(__file__).parent / "scenarios"
+    scenarios_dir = Path(__file__).parent.parent / "scenarios"
     scenario_files = sorted(scenarios_dir.glob("*.json"))
 
     k_values = [1, 2, 4, 8]

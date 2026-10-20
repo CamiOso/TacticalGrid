@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.agents.unit import UnitBFS, UnitDFS
 from src.agents.smart_unit import SmartUnit, SmartUnitEuclidean

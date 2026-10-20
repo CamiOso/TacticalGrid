@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.scenario.loader import ScenarioLoader
 from src.scenario.scenario import Scenario
@@ -27,7 +27,7 @@ from src.game.utility import create_minimax_eval_function
 
 
 def load_scenario(name):
-    root = Path(__file__).parent
+    root = Path(__file__).parent.parent
     data = ScenarioLoader.load(root / "scenarios" / name)
     return data, Scenario(data)
 

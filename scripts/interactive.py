@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.scenario.loader import ScenarioLoader
 from src.scenario.scenario import Scenario
@@ -209,7 +209,7 @@ def main():
     print("PASO 1: ELEGIR ESCENARIO")
     print("=" * 70)
 
-    scenarios_dir = Path(__file__).parent / "scenarios"
+    scenarios_dir = Path(__file__).parent.parent / "scenarios"
     scenario_files = sorted(scenarios_dir.glob("*.json"))
 
     if not scenario_files:

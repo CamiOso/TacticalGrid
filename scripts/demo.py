@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.scenario.loader import ScenarioLoader
 from src.scenario.scenario import Scenario
@@ -22,7 +22,7 @@ def demo():
     print("📁 PASO 1: Cargar Escenario JSON")
     print("-" * 80)
     
-    scenario_file = Path(__file__).parent / "scenarios" / "divergencia_bfs_ucs.json"
+    scenario_file = Path(__file__).parent.parent / "scenarios" / "divergencia_bfs_ucs.json"
     print(f"Cargando: {scenario_file.name}")
     
     scenario_data = ScenarioLoader.load(scenario_file)

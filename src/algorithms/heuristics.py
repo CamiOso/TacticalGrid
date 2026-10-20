@@ -1,6 +1,8 @@
 """Heurísticas para A* y búsqueda informada."""
 
-from typing import Tuple
+import math
+from collections import deque
+from typing import Callable, Dict, Tuple
 
 
 def manhattan_distance(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
@@ -196,3 +198,83 @@ def zero_heuristic(pos_a: Tuple[int, int], pos_b: Tuple[int, int]) -> int:
         Siempre 0
     """
     return 0
+
+
+def crear_distancia_bfs(graph: Dict, goal: Tuple[int, int],
+                         min_cost: float = 1.0) -> Callable:
+    """Distancia real en pasos (rodeando muros) escalada por el costo mínimo.
+
+    **Propósito**: estimar el costo restante usando el número REAL de pasos
+    hasta el objetivo (calculado una vez con BFS desde el objetivo, respetando
+    muros), multiplicado por el menor costo de entrada del escenario.
+    Es el análogo de la heurística 2 de `TacticalGrid`.
+
+    **Qué intenta estimar**: el costo de recorrer el camino de MENOS pasos si
+    cada paso costara lo mínimo posible. Es un problema relajado: relaja los
+    costos del terreno, pero respeta los muros y límites del mapa.
+
+    **Información del estado que utiliza**: la forma del mapa (muros y límites
+    implícitos en el grafo transitado), el objetivo y el costo mínimo
+    transitable. No usa los costos reales de cada celda.
+
+    **Costo computacional**: fábrica O(V+E) por un BFS; cada h(estado) O(1).
+    Al comparar con Manhattan hay que contar este preprocesamiento en el
+    tiempo total.
+
+    **Admisibilidad**: ✓ admisible y consistente. Ningún camino real tiene
+    menos pasos que la distancia BFS, y cada paso cuesta al menos min_cost.
+
+    **Dominancia sobre Manhattan**: ✓ h2 >= h1, porque rodear un muro nunca
+    acorta; con heurísticas consistentes, la que domina expande igual o menos
+    estados.
+
+    **Orientación**: útil cuando hay muros que obligan a rodear (Manhattan no
+    los ve). Pierde discriminación cuando los costos varían mucho o no hay
+    muros (coincide con Manhattan y solo agrega el costo del preprocesamiento).
+
+    **IA**:
+    - Usa: BFS desde el objetivo para distancias reales en pasos.
+    - Interviene: Mejora la guía en presencia de muros (vs Manhattan).
+    - Validar: Que domina a Manhattan; que es admisible; que reduce nodos.
+
+    Args:
+        graph: Grafo de adyacencia {nodo: [vecinos]} (ya excluye no transitables)
+        goal: Posición objetivo (fila, columna)
+        min_cost: Costo mínimo de un paso transitable (default 1.0)
+
+    Returns:
+        Función h(estado) -> float (math.inf si el estado es inalcanzable)
+    """
+    pasos = {}
+    if goal in graph:
+        pasos[goal] = 0
+        cola = deque([goal])
+        while cola:
+            celda = cola.popleft()
+            for vecino in graph.get(celda, []):
+                if vecino not in pasos:
+                    pasos[vecino] = pasos[celda] + 1
+                    cola.append(vecino)
+
+    def h(estado, objetivo=None):
+        distancia = pasos.get(estado)
+        return math.inf if distancia is None else distancia * min_cost
+
+    return h
+
+
+# Registro de heurísticas por nombre (análogo a TacticalGrid.HEURISTICAS).
+HEURISTICAS = {
+    "manhattan": manhattan_distance,
+    "manhattan_weighted": manhattan_weighted_by_terrain,
+    "distancia_bfs": crear_distancia_bfs,
+    "zero": zero_heuristic,
+}
+
+
+def obtener_heuristica(nombre: str):
+    """Devuelve la función de heurística por nombre, o lanza ValueError."""
+    if nombre not in HEURISTICAS:
+        raise ValueError(
+            f"Heurística desconocida: {nombre!r}. Disponibles: {sorted(HEURISTICAS)}")
+    return HEURISTICAS[nombre]

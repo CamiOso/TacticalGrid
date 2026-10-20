@@ -9,14 +9,14 @@ y ejecutan búsqueda en contexto real.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.agents.scenario_agents import BFSAgent, DFSAgent, SmartAgent, EfficientAgent
 
 
 def main():
     """Ejecuta búsquedas con agentes en escenarios disponibles."""
-    scenarios_dir = Path(__file__).parent / "scenarios"
+    scenarios_dir = Path(__file__).parent.parent / "scenarios"
     scenario_files = sorted(scenarios_dir.glob("*.json"))
 
     if not scenario_files:

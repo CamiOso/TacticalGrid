@@ -4,7 +4,7 @@ import sys
 import webbrowser
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.scenario.loader import ScenarioLoader
 from src.application.test_executor import TestExecutor
@@ -18,7 +18,7 @@ def main():
     print("=" * 70)
 
     # Seleccionar escenario
-    scenarios_dir = Path(__file__).parent / "scenarios"
+    scenarios_dir = Path(__file__).parent.parent / "scenarios"
     scenario_files = sorted(scenarios_dir.glob("*.json"))
 
     print("\n📁 Escenarios:\n")

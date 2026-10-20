@@ -229,8 +229,8 @@ Proyecto/
 │   ├── test_heuristica_bfs.py      # ⭐ Heurística distancia_bfs
 │   ├── test_reglas_de_recurso.py   # ⭐ Reglas de recoger/transportar/soltar/ganar
 │   └── ...                         # game_state, utility, verifier, adaptación
-├── DOCUMENTO_TECNICO_COMPLETO.md   # Documentación técnica (61KB)
-├── DOCUMENTO_TECNICO_COMPLETO.html # Versión HTML para PDF
+├── DOCUMENTO_TECNICO.md            # Documentación técnica
+├── DOCUMENTO_TECNICO.pdf           # Documentación técnica en PDF
 └── README.md
 ```
 
@@ -298,8 +298,8 @@ UCS (minimiza costo):
 
 ## 📚 Documentos
 
-- `DOCUMENTO_TECNICO_COMPLETO.md` — documentación técnica (modelado, algoritmos, experimentos, uso de IA).
-- `MANUAL_USUARIO.md` — manual de usuario con instrucciones de instalación y ejecución.
+- `DOCUMENTO_TECNICO.pdf` — documentación técnica (modelado, algoritmos, experimentos, uso de IA).
+- `MANUAL_USUARIO.pdf` — manual de usuario.
 - `README.md` — este archivo.
 
 ## 👨‍💻 Autor

@@ -94,6 +94,14 @@ def _resolver_heuristica(nombre, grafo, goal, costos):
         f"Heurística desconocida: {nombre!r}. Usa: {', '.join(NOMBRES_HEURISTICA)}")
 
 
+def _costo_del_camino(path, costos):
+    """Suma el costo real de las transiciones de un camino (para BFS/DFS)."""
+    if not path or len(path) < 2:
+        return 0
+    return sum(costos.get((path[i], path[i + 1]), 1)
+               for i in range(len(path) - 1))
+
+
 def _ejecutar_busqueda(executor, algoritmo="A_ESTRELLA", heuristica="manhattan", k=2):
     """Ejecuta la búsqueda del escenario cargado en el executor y la imprime."""
     import time
@@ -134,11 +142,17 @@ def _ejecutar_busqueda(executor, algoritmo="A_ESTRELLA", heuristica="manhattan",
         print(json.dumps({"exito": False, "sin_ruta": True}, ensure_ascii=False, indent=2))
         return 0
 
+    # BFS/DFS optimizan número de pasos; para reportar y verificar se usa el
+    # costo real del camino según los costos del terreno del escenario.
+    costo_reportado = resultado.cost
+    if canonico in ("BFS", "DFS"):
+        costo_reportado = _costo_del_camino(resultado.path, costos)
+
     info = {
         "exito": True,
         "camino": resultado.path,
         "movimientos": len(resultado.path) - 1,
-        "costo": resultado.cost,
+        "costo": costo_reportado,
         "generados": resultado.generated,
         "expandidos": resultado.expanded,
         "maximo_frontera": resultado.max_frontier,
@@ -148,7 +162,7 @@ def _ejecutar_busqueda(executor, algoritmo="A_ESTRELLA", heuristica="manhattan",
 
     # Verificación independiente
     verifier = SolutionVerifier(sc.to_dict())
-    es_valido, reporte = verifier.verify_complete_solution(resultado.path, resultado.cost, goal)
+    es_valido, reporte = verifier.verify_complete_solution(resultado.path, costo_reportado, goal)
     print("\n--- Verificación independiente ---")
     print(f"[{'OK' if reporte['valid_path'] else 'ERROR'}] Camino válido")
     print(f"[{'OK' if reporte['valid_cost'] else 'ERROR'}] Costo correcto")
@@ -183,13 +197,17 @@ def _construir_estado(scenario):
 
 
 def _get_successors(state, is_maximizing=None):
-    """Genera los sucesores de un GameState: [(estado, acción_str), ...]."""
+    """Genera los sucesores: [(estado, "UNIDAD.ACCION"), ...].
+
+    Incluir el id de la unidad evita ambigüedad cuando un bando tiene varias
+    unidades y permite aplicar exactamente la acción que evaluó Minimax.
+    """
     out = []
     for unit in state.get_units_by_team(state.current_turn):
         for action in state.get_valid_actions(unit.id):
             ns = state.copy()
             ns.apply_action(unit.id, action)
-            out.append((ns, str(action)))
+            out.append((ns, f"{unit.id}.{action.name}"))
     return out
 
 
@@ -229,7 +247,7 @@ def _ejecutar_adversarial(scenario, profundidad=None, usar_poda=None):
     return 0
 
 
-def _ejecutar_partida(scenario, profundidad=None, usar_poda=None):
+def _ejecutar_partida(scenario, profundidad=None, usar_poda=None, max_turnos=MAX_TURNOS):
     """Modo partida: simula la partida por turnos entre dos bandos."""
     from src.algorithms.adversarial import minimax_with_action_full, alfabeta_with_action_full
     from src.game.utility import create_minimax_eval_function
@@ -253,7 +271,7 @@ def _ejecutar_partida(scenario, profundidad=None, usar_poda=None):
     ejecutar = alfabeta_with_action_full if usar_poda else minimax_with_action_full
 
     turno = 1
-    while not estado.is_terminal() and turno <= MAX_TURNOS:
+    while not estado.is_terminal() and turno <= max_turnos:
         bando = estado.current_turn
         util = create_minimax_eval_function(bando, "balanced")
         resultado = ejecutar(estado, profundidad, True, util, _get_successors)
@@ -263,15 +281,15 @@ def _ejecutar_partida(scenario, profundidad=None, usar_poda=None):
 
         action_str = resultado.best_action
         aplicado = False
-        for unit in estado.get_units_by_team(bando):
-            try:
-                accion = Action[action_str.split(".")[-1]]
-            except KeyError:
-                continue
-            if accion in estado.get_valid_actions(unit.id):
-                if estado.apply_action(unit.id, accion):
-                    aplicado = True
-                    break
+        try:
+            unit_id, accion_nombre = action_str.split(".", 1)
+            accion = Action[accion_nombre]
+        except (ValueError, KeyError):
+            accion = None
+            unit_id = None
+        if (unit_id in estado.units and accion is not None and
+                estado.apply_action(unit_id, accion)):
+            aplicado = True
         if not aplicado:
             print(f"Turno {turno:02d}: acción {action_str} no aplicable; se detiene.")
             break
@@ -286,11 +304,12 @@ def _ejecutar_partida(scenario, profundidad=None, usar_poda=None):
     if ganador:
         print(f"PARTIDA FINALIZADA: gana {ganador} en {turno - 1} turnos.")
     else:
-        print(f"PARTIDA EMPATADA: límite de {MAX_TURNOS} turnos sin ganador.")
+        print(f"PARTIDA SIN GANADOR: límite de {max_turnos} turnos alcanzado.")
     return 0
 
 
-def _ejecutar_escenario(executor, algoritmo=None, heuristica=None, k=None, profundidad=None):
+def _ejecutar_escenario(executor, algoritmo=None, heuristica=None, k=None, profundidad=None,
+                        max_turnos=MAX_TURNOS):
     """Despacha la ejecución según el modo del escenario cargado."""
     sc = executor.scenario
     modo = sc.test_mode
@@ -310,7 +329,7 @@ def _ejecutar_escenario(executor, algoritmo=None, heuristica=None, k=None, profu
     if modo == "adversarial":
         return _ejecutar_adversarial(sc, prof, usar_poda)
     if modo == "partida":
-        return _ejecutar_partida(sc, prof, usar_poda)
+        return _ejecutar_partida(sc, prof, usar_poda, max_turnos)
 
     print(f"Error: modo desconocido {modo!r}.")
     return 1
@@ -398,6 +417,8 @@ def construir_parser():
     parser.add_argument("--k", type=int, default=None, help="ancho del haz para Beam Search")
     parser.add_argument("--profundidad", type=int, default=None,
                         help="profundidad de Minimax para partida/adversarial")
+    parser.add_argument("--max-turnos", type=int, default=MAX_TURNOS,
+                        help="límite de turnos simulados en modo partida (por defecto 100)")
     parser.add_argument("--no-preguntar", action="store_true",
                         help="no mostrar el menú interactivo; usa la sugerencia del JSON")
     return parser
@@ -477,7 +498,7 @@ def main(argv=None):
         try:
             resultado = _ejecutar_escenario(
                 executor, algoritmo=algoritmo, heuristica=heuristica, k=k,
-                profundidad=args.profundidad)
+                profundidad=args.profundidad, max_turnos=args.max_turnos)
         except ValueError as error:
             print(f"❌ Error: {error}")
             continue

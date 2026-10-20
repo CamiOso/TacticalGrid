@@ -60,6 +60,14 @@ def _costo_minimo(costos):
     return min(costos.values()) if costos else 1.0
 
 
+def _costo_del_camino(path, costos):
+    """Costo real de un camino; BFS/DFS optimizan pasos, no costo."""
+    if not path or len(path) < 2:
+        return 0
+    return sum(costos.get((path[i], path[i + 1]), 1)
+               for i in range(len(path) - 1))
+
+
 def _resolver_heuristica(nombre, grafo, goal, costos):
     if nombre == "distancia_bfs":
         return crear_distancia_bfs(grafo, goal, _costo_minimo(costos))
@@ -319,15 +327,16 @@ class TacticalGridApp(tk.Tk):
 
         texto = f"=== Búsqueda: {algo} ===\n"
         texto += f"Unidad: {unidad_id} {start} -> {goal}\n"
-        if heur in ("distancia_bfs", "manhattan_weighted", "zero", "manhattan"):
+        if algo in ("A*", "BEAM"):
             texto += f"Heurística: {heur}\n"
         if algo == "BEAM":
             texto += f"k: {k}\n"
         if res.path is None:
             texto += "\nSin ruta.\n"
         else:
+            costo = res.cost if algo not in ("BFS", "DFS") else _costo_del_camino(res.path, costos)
             texto += (f"\nMovimientos: {len(res.path)-1}\n"
-                      f"Costo: {res.cost}\n"
+                      f"Costo: {costo}\n"
                       f"Generados: {res.generated}\n"
                       f"Expandidos: {res.expanded}\n"
                       f"Frontera máx: {res.max_frontier}\n"
@@ -352,7 +361,7 @@ class TacticalGridApp(tk.Tk):
             for action in state.get_valid_actions(unit.id):
                 ns = state.copy()
                 ns.apply_action(unit.id, action)
-                out.append((ns, str(action)))
+                out.append((ns, f"{unit.id}.{action.name}"))
         return out
 
     def _ejecutar_adversarial(self):
@@ -402,21 +411,15 @@ class TacticalGridApp(tk.Tk):
                     lineas.append(f"T{turno:02d}: {bando} sin acciones.")
                     break
                 from src.game.state import Action
-                accion = None
-                unidad_aplicar = None
-                for u in estado.get_units_by_team(bando):
-                    try:
-                        a = Action[res.best_action.split(".")[-1]]
-                    except KeyError:
-                        continue
-                    if a in estado.get_valid_actions(u.id):
-                        accion = a
-                        unidad_aplicar = u
-                        break
-                if accion is None:
+                try:
+                    unidad_id, accion_nombre = res.best_action.split(".", 1)
+                    accion = Action[accion_nombre]
+                except (ValueError, KeyError):
                     lineas.append(f"T{turno:02d}: acción no aplicable.")
                     break
-                estado.apply_action(unidad_aplicar.id, accion)
+                if not estado.apply_action(unidad_id, accion):
+                    lineas.append(f"T{turno:02d}: acción no aplicable.")
+                    break
                 lineas.append(f"T{turno:02d} {bando} {res.best_action} val={res.best_value:+.0f}")
                 turno += 1
             ganador = estado.get_winner()

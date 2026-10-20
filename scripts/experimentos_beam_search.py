@@ -160,8 +160,13 @@ def main():
     k_values = [1, 2, 4, 8]
     all_results = {}
 
-    # Ejecutar experimento en cada escenario
+    # Ejecutar experimento solo en escenarios de búsqueda (los demás no tienen
+    # unidad_inicio/objetivo de navegación).
     for scenario_file in scenario_files:
+        probe = TestExecutor()
+        probe.load_scenario(scenario_file)
+        if probe.scenario.test_mode != "busqueda":
+            continue
         scenario_name = scenario_file.name
         results = run_beam_search_experiment(scenario_file, k_values)
         all_results[scenario_name] = results

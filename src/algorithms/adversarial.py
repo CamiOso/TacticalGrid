@@ -79,9 +79,9 @@ def minimax(state: dict, depth: int, is_maximizing: bool,
         (valor_minimax, nodos_evaluados)
 
     **IA**:
-    - Usa: Árbol de juego; MAX maximiza, MIN minimiza.
-    - Interviene: Recursión hasta profundidad 0; eval_func valúa terminales.
-    - Validar: MAX retorna máximo de sucesores; MIN retorna mínimo.
+    - Usa: Recursión con alternancia MAX/MIN.
+    - Interviene: Se consultó IA para revisar la recursión y el docstring.
+    - Validar: El estudiante verificó con pruebas de Tic-Tac-Toe.
     """
     nodes_evaluated = 1
 
@@ -142,15 +142,8 @@ def alfabeta(state: dict, depth: int, is_maximizing: bool,
 
     **Costo Computacional**:
     - Mejor caso: O(b^(d/2)) - se multiplica la profundidad alcanzable
-    - Peor caso: O(b^d) - sin poda (si orden es malo)
-    - Esperado: O(b^(3d/4)) - depende orden de evaluación
-
-    **En TacticalGrid (profundidad variable)**:
-    Profundidad | Minimax | Alfa-Beta | Mejora
-    -----------|---------|-----------|-------
-    2          | 82      | 26        | 3.2×
-    3          | 586     | 96        | 6.1×
-    4          | 3610    | 206       | 17.5×
+    - Peor caso: O(b^d) - sin poda (si el orden es malo)
+    - Esperado: O(b^(3d/4)) - depende del orden de evaluación
 
     **Optimalidad**: ✓ IDÉNTICA a Minimax - produce exactamente el mismo resultado,
     solo más rápido. Sin "sorpresas" ni aproximaciones.
@@ -173,9 +166,9 @@ def alfabeta(state: dict, depth: int, is_maximizing: bool,
         (valor_alfabeta, nodos_evaluados): Idéntico al de Minimax
 
     **IA**:
-    - Usa: Minimax con poda alfa-beta (ventana [alpha, beta]).
-    - Interviene: Descarta ramas si no pueden mejorar mejor valor encontrado.
-    - Validar: Mismo resultado que Minimax; menos nodos evaluados.
+    - Usa: Ventana [alpha, beta] y condiciones de poda.
+    - Interviene: Se consultó IA para revisar la condición beta <= alpha.
+    - Validar: El estudiante verificó equivalencia con Minimax en pruebas.
     """
     nodes_evaluated = 1
 

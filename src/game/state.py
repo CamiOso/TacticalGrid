@@ -112,6 +112,11 @@ class GameState:
         - Movimientos: celda debe ser transitable y no tener otra unidad
         - PICKUP: estar en posición del recurso, no lo tiene, recurso libre
         - DROP: transportar recurso, no estar en propia base
+
+        **IA**:
+        - Usa: Precondiciones por tipo de acción.
+        - Interviene: Se consultó IA para revisar las precondiciones.
+        - Validar: El estudiante verificó con tests/test_game_state.py.
         """
         unit = self.get_unit(unit_id)
         if not unit or unit.team != self.current_turn:

@@ -34,24 +34,25 @@
       "id": "A1",
       "fila": 0,
       "columna": 0,
-      "bando": "A"
+      "bando": "A",
+      "tipo": "estandar"
     },
     {
       "id": "B1",
       "fila": 2,
       "columna": 2,
-      "bando": "B"
+      "bando": "B",
+      "tipo": "estandar"
     }
   ],
   "recurso": {
     "fila": 1,
-    "columna": 1,
-    "portador": null
+    "columna": 1
   },
   "turno": "A",
   "juego": {
-    "jugadores": ["A", "B"],
-    "recurso_compartido": true
+    "portador_recurso": null,
+    "profundidad_maxima_minimax": 4
   },
   "prueba": {
     "modo": "adversarial",

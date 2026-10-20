@@ -23,9 +23,9 @@ class UtilityFunction:
     - Cómo cambiaría el comportamiento si se modifican pesos
 
     **IA**:
-    - Usa: Funciones de evaluación para Minimax (3 estrategias: simple/balanced/aggressive).
-    - Interviene: Valúa estados; Minimax elige acción basada en valores.
-    - Validar: u(ganar) > u(perder); cambiar pesos cambia decisión Minimax.
+    - Usa: Tres estrategias de evaluación (simple, balanced, aggressive).
+    - Interviene: Se consultó IA para el esbozo de las estrategias.
+    - Validar: El estudiante definió pesos y verificó con pruebas unitarias.
     """
 
     @staticmethod

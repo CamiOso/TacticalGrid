@@ -45,11 +45,6 @@ def bfs(graph: Dict, start, goal) -> SearchResult:
 
     **Ventaja**: Completo y óptimo para grafos sin pesos.
 
-    **IA**:
-    - Usa: Frontier FIFO para expandir por niveles.
-    - Interviene: Selecciona nodo más antiguo (FIFO) y pausa si hay ciclo.
-    - Validar: Que visited evita revisitar; que result es camino conectado.
-
     Args:
         graph: Diccionario de adyacencia {nodo: [vecinos]}
         start: Nodo inicial
@@ -57,6 +52,11 @@ def bfs(graph: Dict, start, goal) -> SearchResult:
 
     Returns:
         SearchResult con el camino, costo y nodos explorados
+
+    **IA**:
+    - Usa: Cola FIFO y conjunto visited.
+    - Interviene: Se consultó IA para revisar la reconstrucción del camino.
+    - Validar: El estudiante verificó optimalidad en pasos con pruebas unitarias.
     """
     if start == goal:
         return SearchResult([start], 0, 1, 1, 1)
@@ -104,11 +104,6 @@ def dfs(graph: Dict, start, goal) -> SearchResult:
 
     **Ventaja**: Usa menos memoria que BFS. Útil para exploración profunda.
 
-    **IA**:
-    - Usa: Frontier LIFO (pila) para explorar profundo primero.
-    - Interviene: Selecciona nodo más reciente (LIFO) y retrocede si sin salida.
-    - Validar: Que no hay ciclos (visited); que camino es válido.
-
     Args:
         graph: Diccionario de adyacencia {nodo: [vecinos]}
         start: Nodo inicial
@@ -116,6 +111,11 @@ def dfs(graph: Dict, start, goal) -> SearchResult:
 
     Returns:
         SearchResult con el camino, costo y nodos explorados
+
+    **IA**:
+    - Usa: Pila LIFO y conjunto visited.
+    - Interviene: Se consultó IA para revisar la exploración en profundidad.
+    - Validar: El estudiante verificó el comportamiento con pruebas unitarias.
     """
     if start == goal:
         return SearchResult([start], 0, 1, 1, 1)
@@ -242,15 +242,14 @@ def a_star(graph: Dict, start: str, goal: str,
     **Optimalidad**: ✓ Garantiza camino óptimo SI h(n) es ADMISIBLE.
     Admisible significa: h(n) <= h*(n) (nunca sobrestima el costo real).
 
-    **Heurísticas comunes**:
-    - Manhattan: |x1-x2| + |y1-y2| (para grid con movimientos 4-dir)
-    - Euclidean: sqrt((x1-x2)² + (y1-y2)²) (línea recta)
-    - Ambas son admisibles.
+    **Heurísticas disponibles**:
+    - Manhattan: |x1-x2| + |y1-y2| (admisible para movimiento 4-dir).
+    - Manhattan ponderada por costo mínimo (propia, admisible).
+    - Euclidean/Chebyshev: solo admisibles con movimiento diagonal (8-dir); no son
+      admisibles para el movimiento 4-dir de este dominio.
 
     **Ventaja sobre UCS**: Explora MENOS nodos porque h(n) guía la búsqueda
-    hacia el objetivo. En un grid 5x5:
-    - UCS: ~35 nodos explorados
-    - A* Manhattan: ~29 nodos explorados
+    hacia el objetivo. Con una heurística admisible mantiene la optimalidad de UCS.
 
     **IA**:
     - Usa: Frontier por f(n) = g(n) + h(n) (costo real + heurística).

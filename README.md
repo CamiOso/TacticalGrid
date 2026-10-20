@@ -20,7 +20,7 @@ El proyecto ejecuta **algoritmos de inteligencia artificial** en mapas tácticos
 ### **OPCIÓN 1: Ejecutar y ver TODO en consola (CON VISUALIZACIÓN ASCII)**
 
 ```bash
-python run_tests.py
+python start.py
 ```
 
 **Qué hace:**
@@ -120,18 +120,20 @@ python -m pytest tests/ -v
 ```
 
 **Qué verifica:**
-- ✅ 13 tests de escenarios JSON (validación)
-- ✅ 15 tests de búsqueda (BFS, DFS, UCS, A*, Beam Search)
-- ✅ 9 tests de estado del juego
-- ✅ 8 tests de funciones de utilidad
-- ✅ 11 tests de verificación de soluciones
+- ✅ Pruebas de escenarios JSON (validación)
+- ✅ Pruebas de búsqueda (BFS, DFS, UCS, A*, Beam Search)
+- ✅ Pruebas de estado del juego
+- ✅ Pruebas de funciones de utilidad
+- ✅ Pruebas de adversarios (Minimax, Alfa-Beta)
+- ✅ Pruebas de verificación de soluciones
+- ✅ Pruebas de adaptación a cambios de escenario
 
 **Output:**
 ```
-tests/test_scenario.py::test_validator_complete_scenario PASSED
-tests/test_search.py::test_bfs_simple_path PASSED
-tests/test_search.py::test_beam_search_k_variations PASSED
-... (57 tests total)
+tests/test_scenario.py::test_scenario_structure PASSED
+tests/test_search.py::test_bfs_simple_graph PASSED
+tests/test_beam_search.py::test_beam_search_k1 PASSED
+... (86 tests total)
 ```
 
 ---
@@ -157,7 +159,7 @@ Proyecto/
 │   │   └── heuristics.py          # Manhattan, Euclidean, Chebyshev
 │   ├── scenario/
 │   │   ├── schema.py              # Definiciones TypedDict
-│   │   ├── validator.py           # Valida escenarios JSON (13 tests)
+│   │   ├── validator.py           # Valida escenarios JSON
 │   │   ├── loader.py              # Carga archivos JSON
 │   │   └── scenario.py            # Acceso a datos del escenario
 │   ├── game/
@@ -174,12 +176,14 @@ Proyecto/
 │       ├── tactical_unit.py       # TacticalUnit (Minimax)
 │       └── scenario_agents.py     # ⭐ Agentes integrados con JSON
 ├── tests/
-│   ├── test_scenario.py           # 13 tests
-│   ├── test_search.py             # 15 tests
-│   ├── test_game_state.py         # 9 tests
-│   ├── test_utility.py            # 8 tests
-│   ├── test_beam_search.py        # 7 tests
-│   └── test_solution_verifier.py  # 11 tests
+│   ├── test_scenario.py           # Validación de escenarios
+│   ├── test_search.py             # BFS, DFS, UCS, A*
+│   ├── test_game_state.py         # Estado del juego
+│   ├── test_utility.py            # Funciones de utilidad
+│   ├── test_adversarial.py        # Minimax y Alfa-Beta
+│   ├── test_beam_search.py        # Beam Search
+│   ├── test_solution_verifier.py  # Verificación de soluciones
+│   └── test_adaptacion.py         # Adaptación a cambios
 ├── scenarios/
 │   ├── ejemplo_basico.json        # Mapa 4×4
 │   ├── terrenos_costosos.json     # Mapa 5×5 con costos variables
@@ -207,7 +211,7 @@ Proyecto/
 | **A\*** | Informada | ✅* | Media | Heurística guiada |
 | **Beam Search** | Informada | ❌ | ✅ Bajo | Memoria limitada |
 | **Minimax** | Adversarial | ✅ | ❌ Alto | Decisión óptima |
-| **Alfa-Beta** | Adversarial | ✅ | Media | Poda (17.5× más rápido) |
+| **Alfa-Beta** | Adversarial | ✅ | Media | Poda (misma decisión, menos nodos) |
 
 ---
 
@@ -256,6 +260,12 @@ UCS (minimiza costo):
 - Sin dependencias externas (solo librería estándar)
 
 ---
+
+## 📚 Documentos
+
+- `DOCUMENTO_TECNICO_COMPLETO.md` — documentación técnica (modelado, algoritmos, experimentos, uso de IA).
+- `MANUAL_USUARIO.md` — manual de usuario con instrucciones de instalación y ejecución.
+- `README.md` — este archivo.
 
 ## 👨‍💻 Autor
 

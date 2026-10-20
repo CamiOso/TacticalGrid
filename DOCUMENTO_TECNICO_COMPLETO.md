@@ -36,27 +36,37 @@ El proyecto no busca crear el "mejor" algoritmo, sino demostrar que **cada algor
 
 Para responder adecuadamente a estas preguntas, el proyecto implementó:
 
-**Algoritmos de Búsqueda (7 total):**
+**Algoritmos de Búsqueda:**
 - BFS (Breadth-First Search) - encuentra el camino con menos pasos
 - DFS (Depth-First Search) - explora profundidad para casos especiales
 - UCS (Uniform Cost Search) - minimiza el costo real acumulado
 - A* (A-Star) - heurística guiada para eficiencia óptima
 - Beam Search - búsqueda con restricciones de memoria
 - Minimax - búsqueda en espacios adversariales
-- Alfa-Beta - poda sobre Minimax (17.5× más rápido)
+- Alfa-Beta - poda sobre Minimax (produce la misma decisión evaluando menos nodos)
+
+**Heurísticas para A*:**
+- Manhattan (admisible, 4 direcciones)
+- Manhattan ponderada por costo mínimo (heurística propia, admisible)
+- Euclidean y Chebyshev (documentadas como no admisibles para 4 direcciones)
+
+**Modos de prueba:**
+- `busqueda`: resolver una navegación con BFS, DFS, UCS o A*.
+- `adversarial`: evaluar un estado con Minimax/Alfa-Beta y seleccionar una acción.
+- `partida`: jugar una partida por turnos con alfa-beta hasta ganador o límite de turnos.
 
 **Validación Exhaustiva:**
-- 13 criterios de validación de escenarios JSON
-- Verificación de soluciones válidas
+- Validación de escenarios JSON con las reglas del formato común (estructura, mapa, terrenos, entidades, turno y portador)
+- Verificación de soluciones válidas (camino conexo, costo consistente, objetivo alcanzado, sin estados inválidos)
 - Auditoría de costos y caminos conectados
 
 **Visualización e Interactividad:**
 - Visualización paso a paso del algoritmo en HTML interactivo
-- Terminal ASCII para debugging rápido
-- Web server para inspeccionar resultados
+- Terminal ASCII para depuración rápida
+- Generación de visualizaciones HTML del mapa y del camino encontrado
 
 **Sistema Completo:**
-- 65 tests automatizados cubriendo todos los componentes
+- 86 pruebas automatizadas cubriendo todos los componentes
 - Arquitectura de 5 capas con separación clara de responsabilidades
 - Documentación formal del sistema
 
@@ -133,16 +143,19 @@ Esta es la capa más baja y trata con la realidad externa del sistema: archivos 
 El Scenario carga un JSON como este:
 ```json
 {
-  "mapa": [[...terrenos...]],
-  "unidades": [{"id": "A1", "fila": 0, "columna": 0}],
-  "tipos_terreno": {"pasto": {"costo": 5, "transitable": true}},
-  "recurso": {"posicion": [1, 1], "portador": "A1"},
-  "bases": {"A": [3, 3], "B": [0, 3]},
-  "prueba": {"modo": "busqueda", "objetivo": [2, 2]}
+  "version": "1.0",
+  "mapa": {"filas": 4, "columnas": 4},
+  "terreno": [["camino", "muro"], ["pasto", "camino"]],
+  "unidades": [{"id": "A1", "bando": "A", "tipo": "estandar", "fila": 0, "columna": 0}],
+  "tipos_terreno": {"camino": {"costo": 1, "transitable": true}, "pasto": {"costo": 2, "transitable": true}, "muro": {"costo": 0, "transitable": false}},
+  "recurso": {"fila": 1, "columna": 1},
+  "bases": {"A": {"fila": 3, "columna": 3}, "B": {"fila": 0, "columna": 3}},
+  "juego": {"portador_recurso": null, "profundidad_maxima_minimax": 4},
+  "prueba": {"modo": "busqueda", "unidad_inicio": "A1", "objetivo": {"fila": 2, "columna": 2}}
 }
 ```
 
-Y lo valida contra 13 criterios específicos antes de permitir su uso.
+Y lo valida contra las reglas del formato común antes de permitir su uso (detalladas en la sección 5).
 
 **Capa 2 - Game Domain Layer (Capa de Dominio del Juego):**
 
@@ -159,11 +172,11 @@ Transición: (Estado, Acción) → (NuevoEstado, Costo)
 
 Ejemplo:
 Estado1: A1 en (0,0), B1 en (1,0), recurso sin portador
-Acción: MoveDown(A1)
-Estado2: A1 en (1,0), B1 en (1,0)... 
+Acción: MOVE_DOWN(A1)
+Estado2: A1 en (1,0), B1 en (1,0)...
 ```
 
-Pero espera - ¿dos unidades en la misma celda? En el dominio del juego podrían ocupar el mismo espacio (como en ajedrez donde dos piezas no pueden estar en el mismo cuadrado). Esto es una decisión de diseño.
+Dos unidades no pueden ocupar la misma celda: la regla de movimiento impide entrar en una celda ya ocupada (decisión de diseño del equipo).
 
 **Capa 3 - Algorithms Layer (Capa de Algoritmos):**
 
@@ -182,8 +195,9 @@ Cada función retorna un objeto SearchResult consistente:
 class SearchResult:
     path: List[Tuple[int, int]]  # Secuencia de posiciones
     cost: int                     # Costo total del camino
-    explored: int                 # Cuántos nodos exploramos
-    depth: int                    # Profundidad máxima alcanzada
+    expanded: int                 # Nodos expandidos (sacados de la frontera)
+    generated: int                # Nodos generados (creados durante la búsqueda)
+    max_frontier: int             # Tamaño máximo de la frontera
 ```
 
 La belleza de esta capa es que **no sabe nada del dominio**. Los algoritmos reciben un grafo genérico con nodos y aristas, y el costo asociado a cada arista. Podrían usarse para resolver problemas completamente diferentes - ruteo de redes, planificación de rutas en logística, etc.
@@ -246,7 +260,7 @@ Cada capa es independiente, pero conectada. Podemos:
 - Cambiar la estrategia de visualización sin afectar búsqueda
 - Reemplazar BFS con A* sin cambiar el cargador
 - Agregar nuevos escenarios sin modificar algoritmos
-- Esto es **separación de responsabilidades** en acción.
+- Esto es **separación de responsabilidades**: cada capa puede evolucionar sin romper las demás.
 
 ### 2.4 Visualización ASCII Robusta
 
@@ -363,33 +377,32 @@ Para que los algoritmos de búsqueda funcionen, necesitamos una **representació
 2. Determinar si hemos alcanzado la meta
 3. Calcular el costo de llegar aquí
 
-En TacticalGrid, un estado es una tupla con cuatro componentes:
+En TacticalGrid, el estado (`GameState`) captura la siguiente información:
 
 ```
-Estado S = (Posiciones, PortadorRecurso, Turno, Mapa)
+Estado S = (unidades, recurso, turno)
 
 Donde:
-- Posiciones: Diccionario {ID_unidad → (fila, columna)}
-  Ejemplo: {"A1": (2, 3), "A2": (1, 1), "B1": (3, 0)}
-  
-- PortadorRecurso: ID de la unidad que lleva el recurso, o None si está suelto
-  Ejemplo: "A1" (A1 está cargando el recurso)
-  Invariante: Solo UNA unidad porta el recurso (o ninguna)
-  
-- Turno: Número entero incrementando cada acción
-  Ejemplo: 5 (se han realizado 5 acciones)
-  
-- Mapa: La matriz m×n de tipos de terreno (NO cambia durante búsqueda)
-  Ejemplo: [["pasto", "camino"], ["muro", "pasto"]]
+- unidades: Diccionario {ID_unidad → Unidad}. Cada Unidad tiene
+  id, team (A/B), fila, columna y carries_resource (bool).
+  Ejemplo: A1 en (2,3), A2 en (1,1), B1 en (3,0)
+
+- recurso: posición neutral (fila, columna) y portador actual.
+  resource_carrier es el ID de la unidad que lo transporta, o None si está suelto.
+  Invariante: solo UNA unidad porta el recurso (o ninguna).
+
+- turno: current_turn, el bando que debe actuar ("A" o "B").
+  Tras cada acción el turno alterna entre A y B.
+
+- move_history: registro de (unidad, acción, posición) para trazabilidad.
 ```
 
 ¿Por qué estos componentes? Porque necesitamos saber:
-- **¿Dónde está cada unidad?** → Posiciones
-- **¿Quién lleva el recurso?** → PortadorRecurso  
-- **¿Cuántas acciones hemos hecho?** → Turno
-- **¿Qué terrenos hay?** → Mapa
+- **¿Dónde está cada unidad?** → unidades
+- **¿Quién lleva el recurso?** → resource_carrier
+- **¿A quién le toca actuar?** → current_turn
 
-Sin alguno de estos, no podríamos responder si una acción es válida o si hemos ganado.
+Sin alguno de estos, no podríamos responder si una acción es válida o si se ganó la partida. La posesión del recurso distingue estados que comparten la misma posición física (estado compuesto).
 
 ### 3.2 Tamaño del Espacio de Estados
 
@@ -398,22 +411,22 @@ Un concepto importante es el **tamaño del espacio de estados** - cuántos estad
 Para un mapa m×n con k unidades:
 
 ```
-|S| ≤ (m × n)^k × (k + 1) × ∞
+|S| ≤ (m × n)^k × (k + 1) × 2
 
 Donde:
 - (m × n)^k: cada una de las k unidades puede estar en cualquiera de m×n celdas
 - (k + 1): cualquiera de las k unidades lleva recurso, o ninguna (k+1 posibilidades)
-- ∞: el turno crece sin límite
+- 2: el turno puede ser de A o de B
 
 Ejemplo concreto:
 - Mapa 4×4 (16 celdas)
 - 2 unidades
-- |S| ≤ 16^2 × 3 = 768 estados por turno
+- |S| ≤ 16^2 × 3 × 2 = 1536 estados
 
-Pero en práctica es mucho menor porque:
+Pero en la práctica es mucho menor porque:
 - No todas las celdas son transitables
 - Las unidades no pueden estar en la misma celda
-- El turno se limita por el horizonte de búsqueda
+- El horizonte de búsqueda limita la profundidad explorada
 ```
 
 Este análisis es importante porque nos dice que **el espacio de búsqueda es manejable** - no exponencial descontrolado. Los algoritmos pueden explorar estados eficientemente.
@@ -428,63 +441,47 @@ Ejemplo de definición de terrenos:
 
 ```python
 tipos_terreno = {
-    "camino": {
-        "costo": 1,
-        "transitable": True,
-        "descripcion": "Sendero pavimentado, fácil de traversar"
-    },
-    "pasto": {
-        "costo": 5,
-        "transitable": True,
-        "descripcion": "Hierba alta, cuesta más caminar"
-    },
-    "agua": {
-        "costo": 10,
-        "transitable": True,
-        "descripcion": "Río poco profundo, difícil de cruzar"
-    },
-    "muro": {
-        "costo": None,  # Infinito
-        "transitable": False,
-        "descripcion": "Pared de roca, impenetrable"
-    }
+    "camino": {"costo": 1, "transitable": True},
+    "pasto":  {"costo": 2, "transitable": True},
+    "bosque": {"costo": 4, "transitable": True},
+    "muro":   {"transitable": False}
 }
 ```
 
 La validación asegura que:
-- Todo tipo de terreno en el mapa está definido en `tipos_terreno`
-- Los costos son enteros positivos (excepto muros con costo None)
-- Todos los `tipos_terreno` pueden o no ser transitables (flexibilidad)
+- Todo tipo de terreno usado en el mapa está definido en `tipos_terreno`
+- Los terrenos transitables tienen costo entero positivo
+- Los obstáculos son no transitables
 
 ### 3.4 Unidades y Posiciones
 
 Una **unidad** es una entidad que puede moverse en el mapa:
 
 ```python
-class Unidad:
-    id: str                    # "A1", "B2", etc
-    fila: int                  # Posición Y
-    columna: int               # Posición X
-    equipo: str                # "A" o "B"
-    porta_recurso: bool        # ¿Lleva el recurso?
+class Unit:
+    id: str                  # "A1", "B2", etc.
+    team: str                # "A" o "B"
+    row: int                 # Fila (coordenada Y)
+    col: int                 # Columna (coordenada X)
+    carries_resource: bool   # ¿Lleva el recurso?
 ```
 
 Invariantes importantes:
 ```
 1. Una unidad solo puede estar en una celda
-2. No dos unidades pueden estar en la misma celda
+2. Dos unidades no pueden estar en la misma celda
 3. Solo una unidad puede portar el recurso a la vez
 4. La posición debe estar dentro del mapa
-5. La posición debe ser en un terreno transitable
+5. La posición debe estar en terreno transitable
 ```
 
 En el JSON:
 ```json
 {
   "unidades": [
-    {"id": "A1", "fila": 0, "columna": 0, "equipo": "A"},
-    {"id": "A2", "fila": 1, "columna": 1, "equipo": "A"},
-    {"id": "B1", "fila": 2, "columna": 2, "equipo": "B"}
+    {"id": "A1", "bando": "A", "tipo": "estandar", "fila": 0, "columna": 0},
+    {"id": "A2", "bando": "A", "tipo": "estandar", "fila": 1, "columna": 1},
+    {"id": "B1", "bando": "B", "tipo": "estandar", "fila": 2, "columna": 2}
   ]
 }
 ```
@@ -496,25 +493,26 @@ El **recurso** es un objeto especial que una unidad puede cargar:
 ```json
 {
   "recurso": {
-    "posicion": [1, 2],
-    "portador": null,  // null si está suelto, o ID de unidad
-    "base_destino": "A"  // Cuál equipo debe entregarlo
+    "fila": 2,
+    "columna": 2
   }
 }
 ```
 
-Las **bases** son ubicaciones especiales donde los equipos pueden desplegar y capturar:
+Cuando es transportado, el campo `juego.portador_recurso` identifica a la unidad que lo lleva (o `null`).
+
+Las **bases** son ubicaciones especiales donde cada equipo debe entregar el recurso:
 
 ```json
 {
   "bases": {
-    "A": [0, 0],  // Base del equipo A
-    "B": [3, 3]   // Base del equipo B
+    "A": {"fila": 0, "columna": 0},
+    "B": {"fila": 3, "columna": 3}
   }
 }
 ```
 
-Una unidad del equipo A puede recoger el recurso y debe llevarlo a la base B. Este objetivo crea conflicto natural - el equipo B intentará bloquear o interceptar.
+Una unidad recoge el recurso al alcanzar su celda y **debe llevarlo a la base de su propio bando** (`bases[unit.team]`). Un bando gana cuando su unidad portadora llega a su propia base con el recurso. Esto genera un conflicto natural: el bando contrario intenta bloquear o interceptar al portador.
 
 ---
 
@@ -543,128 +541,58 @@ Para que un algoritmo de búsqueda funcione, necesita poder responder:
 Las acciones posibles en TacticalGrid son movimientos y manipulación de recursos:
 
 ```python
-class Accion(Enum):
-    MOVER_ARRIBA = "arriba"
-    MOVER_ABAJO = "abajo"
-    MOVER_IZQUIERDA = "izquierda"
-    MOVER_DERECHA = "derecha"
-    RECOGER_RECURSO = "recoger"
-    SOLTAR_RECURSO = "soltar"
+class Action(Enum):
+    MOVE_UP = "up"
+    MOVE_DOWN = "down"
+    MOVE_LEFT = "left"
+    MOVE_RIGHT = "right"
+    PICKUP_RESOURCE = "pickup"
+    DROP_RESOURCE = "drop"
 ```
 
-Pero no todas las acciones son válidas en todo estado. Hay precondiciones:
+Pero no todas las acciones son válidas en todo estado. Hay precondiciones implementadas en `GameState.get_valid_actions(unidad_id)`:
 
-```python
-def acciones_validas(estado: Estado, unidad_id: str) -> List[Accion]:
-    """Retorna las acciones que puede hacer esta unidad ahora."""
-    
-    acciones = []
-    posicion_actual = estado.posiciones[unidad_id]
-    
-    # Verificar movimientos en las 4 direcciones
-    for direccion in [ARRIBA, ABAJO, IZQUIERDA, DERECHA]:
-        nueva_pos = calcular_nueva_posicion(posicion_actual, direccion)
-        
-        # Precondición: ¿está dentro del mapa?
-        if dentro_del_mapa(nueva_pos):
-            # Precondición: ¿es transitable?
-            tipo_terreno = estado.mapa[nueva_pos]
-            if es_transitable(tipo_terreno):
-                # Precondición: ¿no hay otra unidad allí?
-                if nueva_pos not in estado.posiciones.values():
-                    acciones.append(Accion(direccion))
-    
-    # Recoger recurso: solo si estamos en la misma celda
-    if (estado.recurso.posicion == posicion_actual and 
-        estado.recurso.portador is None and
-        not unidad_id.startswith('B')):  # Solo equipo A puede recoger
-        acciones.append(Accion.RECOGER_RECURSO)
-    
-    # Soltar recurso: solo si lo llevamos
-    if estado.portador_recurso == unidad_id:
-        acciones.append(Accion.SOLTAR_RECURSO)
-    
-    return acciones
-```
-
-Nota que **no todas las acciones son posibles en todo estado**. Esto es realista - en el ajedrez tampoco puedes mover un caballo a cualquier lugar.
+- La unidad debe pertenecer al bando del turno actual (`unit.team == current_turn`); de lo contrario no tiene acciones.
+- **Movimientos**: la celda destino debe ser transitable y no estar ocupada por otra unidad.
+- **Recoger recurso**: la unidad no lo lleva, está en la celda del recurso y el recurso está libre (`resource_carrier is None`).
+- **Soltar recurso**: la unidad lo lleva y no está sobre su propia base.
 
 ### 4.3 Cálculo de Transiciones
 
-Una transición toma un estado y una acción, y produce un nuevo estado con el costo asociado:
+`GameState.apply_action(unidad_id, acción)` valida que la acción sea legal y, si lo es, muta el estado:
 
 ```python
-def transicion(estado: Estado, unidad_id: str, accion: Accion) -> (Estado, int):
-    """Aplica una acción al estado y retorna nuevo estado + costo."""
-    
-    # Copia el estado (no lo modificamos)
-    nuevo_estado = estado.copiar()
-    
-    if accion == MOVER_ARRIBA:
-        posicion_actual = nuevo_estado.posiciones[unidad_id]
-        nueva_posicion = (posicion_actual[0] - 1, posicion_actual[1])
-        
-        # Verificar validez (ya lo verificamos en acciones_validas)
-        if no es_valida_mover(nueva_posicion):
-            raise Exception("Movimiento inválido")
-        
-        # Calcular costo del terreno destino
-        tipo_terreno = nuevo_estado.mapa[nueva_posicion]
-        costo_movimiento = tipos_terreno[tipo_terreno]['costo']
-        
-        # Actualizar posición
-        nuevo_estado.posiciones[unidad_id] = nueva_posicion
-        
-        return nuevo_estado, costo_movimiento
-    
-    elif accion == RECOGER_RECURSO:
-        # El recurso se mueve con la unidad
-        nuevo_estado.portador_recurso = unidad_id
-        return nuevo_estado, 0  # Recoger no cuesta
-    
-    elif accion == SOLTAR_RECURSO:
-        # El recurso queda en la posición actual
-        nuevo_estado.portador_recurso = None
-        return nuevo_estado, 0  # Soltar no cuesta
-    
-    # ... más acciones
+def apply_action(self, unit_id, action):
+    if action not in self.get_valid_actions(unit_id):
+        return False
+    # MOVE_*: actualiza row/col de la unidad
+    # PICKUP_RESOURCE: unit.carries_resource = True; resource_carrier = unit_id
+    # DROP_RESOURCE:   unit.carries_resource = False; resource queda en la posición; carrier = None
+    # Registra en move_history y alterna current_turn (A <-> B)
+    return True
 ```
 
+Los objetos `GameState.copy()` crean una copia profunda, lo que permite a los algoritmos explorar ramas sin interferencias.
+
 Observaciones importantes:
-1. **No modificamos el estado original** - creamos una copia. Esto permite que los algoritmos exploren múltiples ramas sin interferencias
-2. **Los costos varían** - mover a una celda de agua cuesta más que camino
-3. **Algunas acciones no cuestan** - recoger y soltar recursos son gratis
-4. **Los costos son determinísticos** - el mismo movimiento siempre cuesta lo mismo
+1. **No se modifica el estado original** durante la búsqueda: se trabaja sobre copias.
+2. **Los costos varían** según el terreno de destino.
+3. **Recoger y soltar no tienen costo**; solo el movimiento lo tiene.
+4. **Los costos son deterministas**: el mismo movimiento cuesta siempre lo mismo.
 
 ### 4.4 Condiciones Terminales
 
-Un estado es **terminal** si se ha alcanzado el objetivo:
+Un estado es **terminal** si un bando ganó la partida:
 
 ```python
-def es_estado_terminal(estado: Estado, objetivo: Objetivo) -> bool:
-    """¿Hemos ganado?"""
-    
-    # El objetivo es: llevar el recurso a la base de destino
-    if estado.portador_recurso is None:
-        return False  # El recurso está suelto, no ganamos
-    
-    unidad_con_recurso = estado.portador_recurso
-    posicion_unidad = estado.posiciones[unidad_con_recurso]
-    
-    # ¿Estamos en la base destino?
-    base_destino = objetivo['base_destino']
-    posicion_base = estado.bases[base_destino]
-    
-    return posicion_unidad == posicion_base
+def is_terminal(self) -> bool:
+    # Gana un bando cuando una unidad suya, portando el recurso,
+    # llega a la base de su propio equipo.
 ```
 
-Podría haber múltiples condiciones de victoria dependiendo del tipo de problema:
-- Llegar a una posición específica
-- Capturar el recurso y llevarlo a la base
-- Defender una posición durante N turnos
-- Capturar todas las banderas del enemigo
+La detección la realiza `GameState.is_terminal()` / `get_winner()`, que verifican si una unidad que porta el recurso se encuentra sobre la base de su propio bando.
 
-El sistema es flexible para manejar diferentes objetivos.
+El equipo deberá definir (y documentar) reglas deterministas para bloqueos o ausencia de ruta válida; esta es una extensión pendiente señalada en la sección 13.
 
 ---
 
@@ -672,155 +600,38 @@ El sistema es flexible para manejar diferentes objetivos.
 
 ### 5.1 ¿Por Qué Validar?
 
-Imagina que escribes un algoritmo de búsqueda hermoso, lo pruebas exhaustivamente, y luego lo ejecutas en un escenario "válido" que en realidad:
-- Tiene una unidad fuera del mapa
-- Define un terreno que no existe en el mapa
-- Tiene dos unidades en la misma celda inicial
-- Define un objetivo en un muro intransitable
+Los escenarios los suministra el profesor en formato JSON. Antes de reemplazar el escenario actual, el sistema valida el archivo por completo y explica con claridad cualquier error, de modo que un escenario inválido se rechace sin dejar el sistema en un estado parcialmente modificado.
 
-El algoritmo podría crash, dar resultados sin sentido, o peor: parecer funcionar pero producir soluciones inválidas.
+Por eso, **antes de usar un escenario, lo validamos íntegramente**. El validador implementa las reglas definidas por el formato común del proyecto (sección "Validación del escenario" del enunciado).
 
-Por eso, **antes de usar un escenario, lo validamos exhaustivamente**. Tenemos 13 criterios de validación que aseguran que el JSON es correcto.
+### 5.2 Reglas de Validación Implementadas
 
-### 5.2 Los 13 Criterios de Validación
+El módulo `src/scenario/validator.py` (`ScenarioValidator`) organiza la validación en seis pasos que cubren todas las reglas del formato:
 
-#### Criterio 1: Estructura Básica
-```python
-# El JSON debe tener estos campos de nivel superior
-campos_requeridos = ['mapa', 'unidades', 'tipos_terreno', 'recurso', 'bases', 'prueba']
-for campo in campos_requeridos:
-    assert campo in scenario_data, f"Falta campo {campo}"
-```
+**1. Estructura básica** (`_validate_basic_structure`): verifica la presencia de todos los campos obligatorios: `version`, `mapa`, `tipos_terreno`, `terreno`, `bases`, `recurso`, `unidades`, `turno`, `juego`, `prueba`.
 
-#### Criterio 2: Dimensiones del Mapa
-```python
-# El mapa debe ser una matriz rectangular m×n válida
-mapa = scenario_data['mapa']
-assert isinstance(mapa, list) and len(mapa) > 0, "Mapa vacío"
-filas = len(mapa)
-columnas = len(mapa[0])
-assert all(len(fila) == columnas for fila in mapa), "Mapa no rectangular"
-assert filas > 0 and columnas > 0, "Dimensiones inválidas"
-```
+**2. Mapa** (`_validate_map`): `filas` y `columnas` enteros positivos, y la matriz `terreno` debe tener exactamente `filas` filas, cada una con `columnas` elementos (dimensiones consistentes).
 
-#### Criterio 3: Tipos de Terreno Definidos
-```python
-# Todos los terrenos en el mapa deben estar definidos en tipos_terreno
-tipos_definidos = set(scenario_data['tipos_terreno'].keys())
-for fila in scenario_data['mapa']:
-    for celda in fila:
-        assert celda in tipos_definidos, f"Terreno {celda} no definido"
-```
+**3. Terrenos** (`_validate_terrain`): todo tipo de terreno usado en la matriz está definido en `tipos_terreno`, y todo terreno transitable tiene costo positivo.
 
-#### Criterio 4: Validez de Definiciones de Terreno
-```python
-# Cada tipo de terreno debe tener 'transitable' y 'costo'
-for tipo, props in scenario_data['tipos_terreno'].items():
-    assert 'transitable' in props, f"{tipo} sin campo transitable"
-    assert 'costo' in props, f"{tipo} sin campo costo"
-    assert isinstance(props['transitable'], bool), f"{tipo} transitable no es bool"
-    if props['transitable']:
-        assert isinstance(props['costo'], int) and props['costo'] > 0
-    else:
-        assert props['costo'] is None  # Intransitable → costo infinito
-```
+**4. Entidades** (`_validate_entities`): bases, recurso y unidades dentro del mapa; ninguna unidad sobre celda no transitable; identificadores de unidad únicos; cada unidad pertenece a un bando `A` o `B`.
 
-#### Criterio 5: Posiciones Válidas de Unidades
-```python
-# Cada unidad debe estar dentro del mapa
-filas, columnas = len(mapa), len(mapa[0])
-for unidad in scenario_data['unidades']:
-    assert 0 <= unidad['fila'] < filas, "Unidad fuera del mapa (fila)"
-    assert 0 <= unidad['columna'] < columnas, "Unidad fuera del mapa (columna)"
-```
+**5. Turno** (`_validate_turn`): el turno es `"A"` o `"B"`.
 
-#### Criterio 6: Unicidad de Unidades
-```python
-# No puede haber dos unidades con el mismo ID
-ids = [u['id'] for u in scenario_data['unidades']]
-assert len(ids) == len(set(ids)), "IDs de unidades duplicados"
-```
-
-#### Criterio 7: Terreno Transitable para Unidades
-```python
-# Las unidades deben estar en terreno transitable
-for unidad in scenario_data['unidades']:
-    pos = (unidad['fila'], unidad['columna'])
-    tipo_terreno = mapa[pos[0]][pos[1]]
-    assert tipos_terreno[tipo_terreno]['transitable'], \
-        f"Unidad en terreno intransitable"
-```
-
-#### Criterio 8: Duración de Turno
-```python
-# El turno máximo debe ser positivo
-assert 'turno_maximo' in scenario_data['prueba']
-assert scenario_data['prueba']['turno_maximo'] > 0
-```
-
-#### Criterio 9: Posición del Recurso
-```python
-# El recurso debe estar en posición válida
-pos = scenario_data['recurso']['posicion']
-assert 0 <= pos[0] < filas and 0 <= pos[1] < columnas, \
-    "Recurso fuera del mapa"
-assert tipos_terreno[mapa[pos[0]][pos[1]]]['transitable'], \
-    "Recurso en terreno intransitable"
-```
-
-#### Criterio 10: Portador del Recurso Válido
-```python
-# Si hay portador, debe ser una unidad que existe
-portador = scenario_data['recurso']['portador']
-if portador is not None:
-    ids_unidades = {u['id'] for u in scenario_data['unidades']}
-    assert portador in ids_unidades, f"Portador {portador} no existe"
-```
-
-#### Criterio 11: Objetivo Válido
-```python
-# El objetivo debe estar en posición transitable
-obj = scenario_data['prueba']['objetivo']
-assert 0 <= obj['fila'] < filas and 0 <= obj['columna'] < columnas
-tipo = mapa[obj['fila']][obj['columna']]
-assert tipos_terreno[tipo]['transitable'], "Objetivo en terreno intransitable"
-```
-
-#### Criterio 12: Modo de Prueba Válido
-```python
-# El modo debe ser uno de los soportados
-modo = scenario_data['prueba']['modo']
-assert modo in ['busqueda', 'adversarial', 'juego'], "Modo desconocido"
-```
-
-#### Criterio 13: Bases Existentes
-```python
-# Debe haber al menos base A
-assert 'A' in scenario_data['bases'], "Falta base A"
-for equipo, pos in scenario_data['bases'].items():
-    assert 0 <= pos[0] < filas and 0 <= pos[1] < columnas
-    tipo = mapa[pos[0]][pos[1]]
-    assert tipos_terreno[tipo]['transitable'], f"Base {equipo} en terreno intransitable"
-```
+**6. Portador del recurso** (`_validate_resource_carrier`): si `juego.portador_recurso` no es `null`, debe identificar una unidad existente.
 
 ### 5.3 Ejecución de Validación
 
-El método `ScenarioValidator.validate_scenario()` ejecuta todos estos criterios y retorna:
+El método `ScenarioValidator.validate_scenario()` ejecuta estas reglas y retorna:
 
 ```python
 is_valid, errors = ScenarioValidator.validate_scenario(scenario_data)
 
 # is_valid: bool
 # errors: List[str] con detalles de cada error encontrado
-
-if is_valid:
-    print("✅ Escenario válido")
-else:
-    for error in errors:
-        print(f"❌ {error}")
 ```
 
-Si **cualquier validación falla**, el escenario es rechazado. Esto es paranoia prudente - mejor rechazar temprano que gastar CPU en un escenario mal formado.
+Y `ScenarioLoader.load()` las aplica de forma atómica: si la validación falla, lanza `ValueError` con todos los errores, sin dejar estado parcial.
 
 ---
 
@@ -854,88 +665,53 @@ def utilidad(estado: Estado) -> float:
 
 ### 6.2 Tres Estrategias de Evaluación
 
-Implementamos tres formas diferentes de calcular utilidad:
+`src/game/utility.py` implementa tres funciones de evaluación, todas desde la perspectiva de un bando dado. `create_minimax_eval_function(team, strategy)` produce una función `eval(estado) -> float` que usa una de ellas.
 
-#### Estrategia 1: Basada en Distancia
+#### Estrategia 1: Basada en Distancia (`simple_distance_based`)
 
 ```python
-def utilidad_distancia(estado: Estado, objetivo: Posicion) -> float:
-    """
-    Utilidad inversamente proporcional a la distancia al objetivo.
-    
-    Cuanto más cerca del objetivo, mayor utilidad.
-    """
-    pos_unidad_A1 = estado.posiciones['A1']
-    distancia = manhattan_distance(pos_unidad_A1, objetivo)
-    
-    # Utilidad = 1000 / (1 + distancia)
-    # A distancia 0 (en objetivo): utilidad = 1000
-    # A distancia 5: utilidad = 166
-    # A distancia 100: utilidad = 9.9
-    return 1000 / (1 + distancia)
+@staticmethod
+def simple_distance_based(state: GameState, team: str) -> float:
+    winner = state.get_winner()
+    if winner == team:
+        return 1000.0
+    elif winner is not None:
+        return -1000.0
+
+    # Si una unidad del equipo lleva el recurso:
+    #   return 500.0 - (distancia_a_base * 10)
+    # Si no lo lleva:
+    #   return 100.0 - (dist_minima_al_recurso * 5)
 ```
 
-Ventajas: Simple, directa, funciona bien cuando solo hay un objetivo claro.
-Desventajas: No considera el costo del camino, solo la distancia.
+Solo considera la distancia al recurso (o a la base si lo porta). Costo O(n), n = número de unidades. Simple pero no modela bloqueos ni control territorial.
 
-#### Estrategia 2: Balanceada
+#### Estrategia 2: Balanceada (`balanced_strategy`)
+
+Combina ofensiva y defensa. Costo O(n²) pues compara todas las unidades:
 
 ```python
-def utilidad_balanceada(estado: Estado, objetivo: Posicion, 
-                        costo_acumulado: int) -> float:
-    """
-    Balancea estar cerca del objetivo CON el costo de llegar allá.
-    
-    Preferimos un camino más largo pero barato sobre uno corto pero costoso.
-    """
-    
-    pos_unidad = estado.posiciones['A1']
-    distancia = manhattan_distance(pos_unidad, objetivo)
-    
-    # Componente 1: Proximidad al objetivo
-    proximidad = 1000 / (1 + distancia)
-    
-    # Componente 2: Eficiencia del costo
-    costo_por_paso = costo_acumulado / max(1, estado.turno)
-    eficiencia = 100 / (1 + costo_por_paso)
-    
-    # Combinar: 70% proximidad, 30% eficiencia
-    return 0.7 * proximidad + 0.3 * eficiencia
+@staticmethod
+def balanced_strategy(state: GameState, team: str) -> float:
+    # GANAR: +5000 / PERDER: -5000
+    # Componente 1 (porta recurso): 2000 - dist_a_base_propia * 20
+    # Componente 2 (recurso libre):    500 - dist_a_recurso * 8  (por unidad)
+    # Componente 3 (defensa):        + 100 * dist_enemigo_a_su_base (si enemigo porta)
+    # Componente 4 (control):        + 50 - dist_al_centro  (por unidad)
 ```
 
-Ventajas: Considera múltiples factores, más realista.
-Desventajas: Requiere ajustar pesos (0.7 vs 0.3).
+Es la estrategia usada por defecto en el modo adversarial.
 
-#### Estrategia 3: Agresiva
+#### Estrategia 3: Agresiva (`aggressive_offense`)
+
+Prioridad máxima a capturar y entregar el recurso, ignorando la defensa:
 
 ```python
-def utilidad_agresiva(estado: Estado, 
-                     objetivo_amigo: Posicion,
-                     posicion_enemigo: Posicion) -> float:
-    """
-    En contexto adversarial: queremos vencer al enemigo.
-    
-    Utilidad alta si:
-    - Estamos cerca de nuestro objetivo
-    - Estamos lejos del enemigo
-    - Controlamos el recurso
-    """
-    
-    pos_amigo = estado.posiciones['A1']
-    dist_objetivo = manhattan_distance(pos_amigo, objetivo_amigo)
-    dist_enemigo = manhattan_distance(pos_amigo, posicion_enemigo)
-    
-    # Estar cerca del objetivo es bueno (+)
-    # Estar cerca del enemigo es malo (-)
-    # Tener el recurso es muy bueno (+++)
-    
-    utilidad = (
-        500 / (1 + dist_objetivo) -  # Distancia a objetivo
-        200 / (1 + dist_enemigo) +   # Distancia al enemigo (negativa)
-        (1000 if estado.portador_recurso == 'A1' else 0)  # Tener recurso
-    )
-    
-    return utilidad
+@staticmethod
+def aggressive_offense(state: GameState, team: str) -> float:
+    # GANAR: +10000 / PERDER: -10000
+    # Si porta recurso: return 3000 - dist_a_base * 30
+    # Si no:            return 1000 - dist_minima_al_recurso * 15
 ```
 
 ### 6.3 Uso en Minimax
@@ -1676,27 +1452,23 @@ def beam_search(grafo: Grafo, inicio: Nodo, objetivo: Nodo,
 
 ### 10.3 Comparación: k = 1, 2, 4, 8
 
-Ejecutamos Beam Search variando k en escenarios reales:
+Ejecutamos Beam Search variando k en los escenarios; los resultados se guardan en `experimentos_beam_search_resultados.json`.
+
+**Escenario: `divergencia_bfs_ucs.json` (mapa 3×5), de A1(0,0) a (0,4):**
 
 ```
-Escenario: divergencia_bfs_ucs.json (3×5 mapa)
-Objetivo: llegar de A1(0,0) a (2,4)
-
-k    Éxito  Pasos  Costo  Explorados  Memoria
-─────────────────────────────────────────────
-1    ❌     -      ∞      4           1
-2    ✅     8      12     6           2
-4    ✅     6      8      8           4
-8    ✅     6      8      8           8
+k    Movimientos  Costo  Memoria frontera
+─────────────────────────────────────────
+1    8            8      1
+2    8            8      2
+4    8            8      4
+8    8            8      8
+```
 
 Análisis:
-- k=1: Demasiado restrictivo, ni encuentra solución
-- k=2: Encuentra solución pero no óptima (costo 12 vs 8)
-- k=4: Óptimo en costo, compara con A*
-- k=8: Igual a k=4, no mejora con más memoria
-```
-
-Trade-off claro: más k → mejor solución pero más memoria.
+- En este escenario la frontera nunca supera un nodo relevante, por lo que todos los k encuentran la misma solución de costo 8.
+- A mayor k se conservan más alternativas en memoria (mayor tolerancia a errores de la heurística), pero en escenarios pequeños esto no cambia el resultado.
+- El efecto de "descartar un camino que luego habría sido conveniente" no se manifiesta en estos mapas; se necesitaría un escenario con decisiones ambiguas para evidenciarlo.
 
 ---
 
@@ -1709,79 +1481,62 @@ Trade-off claro: más k → mejor solución pero más memoria.
 **Escenario:** `divergencia_bfs_ucs.json`
 - Mapa 3×5
 - Inicio: A1 en (0, 0)
-- Objetivo: (2, 4)
+- Objetivo: (0, 4)
 - Terrenos: camino (costo 1), pasto (costo 5)
 
-**Ejecución:**
+**Ejecución (resultados reales):**
 
 ```
-Algoritmo        Pasos  Costo  Explorados
-──────────────────────────────────────────
-BFS              4      20     12
-DFS              4      20     6
-UCS              8      8      8  ← Mejor costo
-A*               8      8      7  ← Mejor eficiencia
-Beam Search (k=4) 6     8      8
+Algoritmo        Movimientos  Costo algoritmo  Costo real  Expandidos
+────────────────────────────────────────────────────────────────────
+BFS              4            4 (pasos)         16          10
+DFS              4            4 (pasos)         16           5
+UCS              8            8                  —          11
+A*               8            8                  —          10
 ```
 
 **Análisis:**
 
-BFS encontró un camino corto (4 pasos) pero caro (costo 20):
-```
-Ruta BFS: (0,0) → (0,1) → (0,2) → (1,2) → (2,2) → (2,3) → (2,4)
-          Pasto   Pasto   Pasto   Pasto   Pasto   Camino  Camino
-          Costo 5×4 + 2×1 = 22
-```
+BFS minimiza pasos y encuentra una ruta de 4 movimientos, pero que atraviesa pasto y cuesta 16. UCS minimiza costo acumulado y encuentra una ruta de 8 movimientos por camino (costo 1 por celda), con costo total 8.
 
-UCS encontró un camino largo (8 pasos) pero barato (costo 8):
-```
-Ruta UCS: (0,0) → (1,0) → (1,1) → (1,2) → ... → (2,4)
-          Camino  Camino  Camino  ...
-          Costo 8×1 = 8
-```
-
-**Conclusión:** En mapas donde el costo varía, BFS es **subóptimo**. UCS es necesario cuando minimizar costo es importante.
+**Conclusión:** En mapas donde el terreno tiene costos distintos, BFS es **subóptimo** en costo. UCS es necesario cuando minimizar el costo acumulado es el objetivo.
 
 ### 11.2 Caso 2: Eficiencia A* vs UCS
 
 **Pregunta:** ¿La heurística realmente ahorra exploración?
 
-**Escenario:** `ejemplo_basico.json` (4×4 mapa)
+**Escenario:** `terrenos_costosos.json` (mapa 5×5)
 
 ```
-Algoritmo    Pasos  Costo  Explorados  Ratio
-──────────────────────────────────────────────
-UCS          6      10     8           100%
-A*           6      10     6           75%
-Beam(k=4)    6      10     7           87.5%
+Algoritmo    Movimientos  Costo  Expandidos
+──────────────────────────────────────────
+UCS          8            8      15
+A*           8            8       9
 ```
 
 **Análisis:**
 
-A* exploró 2 nodos menos que UCS (6 vs 8) porque la heurística Manhattan lo guió. UCS exploró nodos que A* descartó por tener f-value alto.
-
-El ratio 75% significa A* es 25% más eficiente que UCS en exploración.
+A* expandió 9 nodos frente a los 15 de UCS (40% menos) para llegar al mismo camino de costo mínimo. La heurística Manhattan guía la expansión hacia el objetivo y evita expandir nodos con costo acumulado bajo pero lejos de la meta.
 
 ### 11.3 Caso 3: Memoria vs Calidad en Beam Search
 
-**Experimentamos** con k = 1, 2, 4, 8 en tres escenarios.
+Se experimentó con k = 1, 2, 4, 8 sobre los escenarios, con resultados guardados en `experimentos_beam_search_resultados.json`.
 
-**Resultados globales:**
+**Ejemplo (`divergencia_bfs_ucs.json`):**
 
 ```
-k     Tasa Éxito  Costo Promedio  Memoria
+k     Movimientos  Costo  Memoria frontera
 ───────────────────────────────────────────
-1     33%         ∞               1
-2     89%         12.5            2
-4     100%        8.0             4
-8     100%        8.0             8
+1     8            8      1
+2     8            8      2
+4     8            8      4
+8     8            8      8
 ```
 
 **Hallazgos:**
-1. Beam Search con k pequeño (1-2) es insuficiente
-2. k=4 es punto de equilibrio: 100% éxito, memoria razonable
-3. k > 4 no mejora (retornos decrecientes)
-4. Para escenarios de 3×5 a 5×5, k=4 es recomendado
+1. En escenarios pequeños, k=1 ya encuentra la solución óptima (la frontera rara vez supera 1 nodo prometedor).
+2. A mayor k se conservan más alternativas (mayor memoria), lo que reduce el riesgo de descartar un camino que luego sería conveniente.
+3. El análisis del efecto de restringir k debe hacerse sobre escenarios con decisiones ambiguas, donde un k pequeño sí descarte la ruta óptima; los escenarios actuales son demasiado simples para evidenciarlo.
 
 ---
 
@@ -1847,25 +1602,23 @@ Beam es ~500× más rápido (pero puede no ser óptimo)
 
 ### 13.1 Limitaciones Actuales
 
-1. **Escenarios estáticos**
-   - El mapa no cambia durante búsqueda
-   - En realidad, los enemigos se mueven, aparecen nuevos obstáculos, etc.
+1. **Terminación de partida en casos no ganadores**
+   - El modo de partida por turnos está implementado con `TestExecutor.execute_partida_test()`: cada bando juega con alfa-beta y la partida termina al detectarse un ganador o al alcanzarse el límite de turnos. En tableros donde la utilidad simple no conduce a entregar el recurso, la partida puede agotar el límite de turnos sin ganador; esto refleja la limitación de la función de utilidad, no del motor.
 
-2. **Información perfecta**
-   - Los algoritmos conocen el mapa completo
-   - En realidad, la visibilidad es limitada
+2. **Reglas deterministas de bloqueo / pérdida del portador pendientes**
+   - El enunciado exige definir reglas para bloqueos, ausencia de ruta válida o pérdida del portador. Actualmente `get_valid_actions` simplemente no devuelve movimientos si no hay celdas disponibles, sin una regla explícita de resolución o fin de partida.
 
-3. **Heurísticas simples**
-   - Solo Manhattan, Euclidean, Chebyshev
-   - Podríamos usar Pattern Database heuristics o más sofisticadas
+3. **Métricas adversariales parciales**
+   - Minimax/αβ reportan nodos evaluados, valor y acción; faltan mediciones de nodos podados, profundidad alcanzada y tiempo en el reporte estructurado.
 
-4. **Sin planificación multi-agente**
-   - Cada agente se planifica independientemente
-   - Los agentes no coordinan sus movimientos
+4. **Segunda heurística propia por justificar formalmente**
+   - Se dispone de Manhattan (admisible, 4 direcciones) y de Euclidean/Chebyshev (no admisibles para 4 direcciones). Está pendiente formalizar una segunda heurística de diseño propio justificada para A*.
 
-5. **Sin replanificación**
-   - Una vez planificamos, ejecutamos el plan
-   - Si el mundo cambia, no replanificamos
+5. **Escenarios estáticos e información perfecta**
+   - El mapa no cambia durante la búsqueda y los algoritmos conocen el mapa completo.
+
+6. **Sin planificación multi-agente ni replanificación**
+   - Cada unidad se planifica de forma independiente y no se coordina con las demás.
 
 ### 13.2 Posibles Extensiones
 
@@ -1891,44 +1644,14 @@ Beam es ~500× más rápido (pero puede no ser óptimo)
 
 ---
 
-## 14. CONCLUSIONES
+## 15. REPORTE DE USO DE IA GENERATIVA
 
-### 14.1 Resumen de Aprendizajes
+De acuerdo con el enunciado, el uso de IA generativa debe declararse y quedar trazable tanto en la documentación de métodos como en este informe.
 
-Este proyecto demuestra que **no existe el algoritmo superior universal**. Cada uno es mejor para su contexto:
-
-- **BFS:** Cuando solo importan los pasos (minimizar distancia)
-- **UCS:** Cuando minimizar costo es crítico
-- **A\*:** Cuando tenemos buena heurística (el caso más común)
-- **Beam Search:** Cuando la memoria es limitada
-- **Minimax/Alfa-Beta:** Cuando hay adversarios inteligentes
-
-### 14.2 Importancia de la Arquitectura
-
-El sistema fue diseñado con **5 capas independientes**. Esto permitió:
-
-1. **Probar algoritmos sin mezclarlos con dominio**
-2. **Cambiar componentes sin afectar otros**
-3. **Reutilizar código en diferentes contextos**
-4. **Escribir tests exhaustivos de cada capa**
-
-Una arquitectura monolítica habría sido un desastre de mantenimiento.
-
-### 14.3 El Rol de la Validación
-
-Implementar 13 criterios de validación pareció "exceso de ingeniería" al inicio. Pero cuando encontramos un escenario con unidades duplicadas o terreno indefinido, la validación nos salvó horas de debugging.
-
-**Lección:** En sistemas reales, validación exhaustiva es inversión, no gasto.
-
-### 14.4 Siguiente Paso
-
-El próximo proyecto podría ser:
-- Agregar RTA* para mapas dinámicos
-- Implementar multi-agent pathfinding
-- Usar MCTS para espacios muy grandes
-- Agregar aprendizaje por refuerzo
-
-Los algoritmos que implementamos son la base de todo lo que viene.
+- **Uso declarado:** Sí. Se utilizó IA generativa como herramienta de apoyo durante el desarrollo (borradores de docstrings, esbozos de pseudocódigo y redacción inicial de este documento).
+- **Alcance:** La IA contribuyó en la estructura y redacción de documentación y en la generación de ejemplos de prueba iniciales. Las ecuaciones, invariantes y resultados numéricos finales fueron verificados ejecutando el código real.
+- **Validación del estudiante:** Todo el código fue ejecutado y validado con la suite de pruebas (86 pruebas en pytest). Los resultados experimentales reportados en la sección 11 se obtuvieron ejecutando `TestExecutor` sobre los escenarios y no de estimaciones de la IA.
+- **Responsabilidad:** El autor revisó y corrigió cada método, y está en capacidad de explicar, modificar y defender el código.
 
 ---
 

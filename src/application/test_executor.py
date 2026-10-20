@@ -7,6 +7,14 @@ from src.scenario.scenario import Scenario
 from src.algorithms.search import bfs, dfs, ucs, a_star
 from src.algorithms.adversarial import minimax_with_action, alfabeta_with_action
 from src.algorithms.heuristics import manhattan_distance
+from src.game.state import Action
+
+
+def _action_from_str(action_str: str) -> Action:
+    """Convierte la representación 'Action.MOVE_UP' a la enumeración Action."""
+    mapping = {a.name: a for a in Action}
+    name = action_str.split('.')[-1].strip()
+    return mapping.get(name, Action.MOVE_UP)
 
 
 class TestExecutor:
@@ -280,12 +288,119 @@ class TestExecutor:
                 'error': f'Error en prueba adversarial: {str(e)}'
             }
 
+    def execute_partida_test(self, max_turns: int = 20) -> Dict:
+        """
+        Ejecuta una partida por turnos (modo partida).
+
+        Cada bando elige su acción con alfa-beta sobre el estado actual, desde la
+        perspectiva de su propio bando. La partida termina cuando un bando gana
+        (lleva el recurso a su base) o se alcanza el límite de turnos.
+
+        Retorna:
+            Dict con la secuencia de turnos y el resultado.
+        """
+        if not self.scenario:
+            raise RuntimeError("Escenario no cargado.")
+
+        test_config = self.scenario.test_config
+        if test_config['modo'] != 'partida':
+            raise ValueError(
+                f"Test mode debe ser 'partida', se encontró '{test_config['modo']}'")
+
+        import time
+        from src.game.state import GameState, Unit
+        from src.algorithms.adversarial import alfabeta_with_action
+        from src.game.utility import create_minimax_eval_function
+
+        try:
+            units = []
+            for unit_data in self.scenario.units:
+                units.append(Unit(
+                    id=unit_data['id'],
+                    team=unit_data.get('bando', 'A'),
+                    row=unit_data['fila'],
+                    col=unit_data['columna'],
+                    carries_resource=False,
+                ))
+
+            resource_pos = self.scenario.resource_position
+            if isinstance(resource_pos, dict):
+                resource_pos = (resource_pos['fila'], resource_pos['columna'])
+
+            state = GameState(
+                scenario_data=self.scenario_data,
+                units=units,
+                resource_pos=resource_pos,
+                resource_carrier=self.scenario.resource_carrier,
+                current_turn=self.scenario.current_turn,
+            )
+
+            depth = test_config.get('profundidad', self.scenario.max_minimax_depth)
+
+            def get_successors(s: GameState, is_maximizing: bool = None):
+                out = []
+                for unit in s.get_units_by_team(s.current_turn):
+                    for action in s.get_valid_actions(unit.id):
+                        ns = s.copy()
+                        ns.apply_action(unit.id, action)
+                        out.append((ns, str(action)))
+                return out
+
+            turns = []
+            ganador = None
+
+            for turno in range(max_turns):
+                if state.is_terminal():
+                    ganador = state.get_winner()
+                    break
+
+                team = state.current_turn
+                eval_func = create_minimax_eval_function(team=team, strategy='balanced')
+
+                start_t = time.perf_counter()
+                result = alfabeta_with_action(state, depth, True, eval_func, get_successors)
+                elapsed = time.perf_counter() - start_t
+
+                if result.best_action is None:
+                    break
+
+                # Aplicar la acción elegida (misma acción devuelta para MAX/MIN)
+                applied = False
+                for unit in state.get_units_by_team(team):
+                    if str(result.best_action) in [str(a) for a in state.get_valid_actions(unit.id)]:
+                        if state.apply_action(unit.id, _action_from_str(result.best_action)):
+                            applied = True
+                            break
+                if not applied:
+                    break
+
+                turns.append({
+                    'turno': turno + 1,
+                    'bando': team,
+                    'accion': str(result.best_action),
+                    'valor': result.best_value,
+                    'nodos_evaluados': result.nodes_evaluated,
+                    'tiempo_ms': round(elapsed * 1000, 3),
+                })
+
+            return {
+                'modo': 'partida',
+                'profundidad': depth,
+                'max_turnos': max_turns,
+                'turnos_jugados': len(turns),
+                'ganador': ganador or state.get_winner(),
+                'secuencia': turns,
+            }
+
+        except Exception as e:
+            return {'modo': 'partida', 'error': f'Error en partida: {str(e)}'}
+
     def execute_test(self) -> Dict:
         """
         Ejecuta la prueba especificada en el escenario.
 
-        Detecta automáticamente el modo (búsqueda o adversarial) y ejecuta
-        el tipo de prueba correspondiente.
+        Detecta automáticamente el modo (búsqueda, adversarial o partida) y
+        ejecuta el tipo de prueba correspondiente.
 
         Retorna:
             Dict con resultados
@@ -299,6 +414,8 @@ class TestExecutor:
             return self.execute_search_test()
         elif test_mode == 'adversarial':
             return self.execute_adversarial_test()
+        elif test_mode == 'partida':
+            return self.execute_partida_test()
         else:
             raise ValueError(f"Modo de prueba desconocido: {test_mode}")
 
@@ -359,6 +476,25 @@ class TestExecutor:
                         valor = algo_result.get('valor', '-')
                         accion = algo_result.get('accion', 'None')
                         output.append(f"{algo_name:<15} {exito:<8} {str(valor):<15} {str(accion):<20}")
+
+        elif results['modo'] == 'partida':
+            output.append(f"\nConfiguración:")
+            output.append(f"  Profundidad: {results.get('profundidad', '-')}")
+            output.append(f"  Máximo de turnos: {results.get('max_turnos', '-')}")
+
+            if 'error' in results:
+                output.append(f"\n❌ Error: {results['error']}")
+            else:
+                output.append(f"\nTurnos jugados: {results.get('turnos_jugados', '-')}")
+                output.append(f"Ganador: {results.get('ganador', '-')}")
+                output.append(f"\n{'Turno':<8} {'Bando':<8} {'Acción':<20} {'Valor':<12} {'Nodos':<8} {'Tiempo(ms)':<12}")
+                output.append("-" * 70)
+
+                for t in results.get('secuencia', []):
+                    output.append(
+                        f"{t['turno']:<8} {t['bando']:<8} {t['accion']:<20} "
+                        f"{str(t['valor']):<12} {str(t['nodos_evaluados']):<8} {str(t['tiempo_ms']):<12}"
+                    )
 
         output.append("\n" + "=" * 70)
         return "\n".join(output)

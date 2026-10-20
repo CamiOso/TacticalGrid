@@ -14,6 +14,11 @@ class ScenarioValidator:
     - Validación de unidades: IDs unique, no units on non-transitable cells
     - Validación de turnos: Turn belongs to A or B
     - Validación de portador: Resource carrier exists
+
+    **IA**:
+    - Usa: Seis pasos de validación que cubren las reglas del formato.
+    - Interviene: Se consultó IA para el esbozo de las reglas y docstrings.
+    - Validar: El estudiante implementó y verificó con tests/test_scenario.py.
     """
 
     @staticmethod

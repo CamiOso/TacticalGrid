@@ -130,7 +130,19 @@ python scripts/visualize_search.py
 
 ---
 
-### **OPCIÓN 3: Ejecutar todos los tests**
+### **OPCIÓN 3: Interfaz gráfica (Tkinter)**
+
+```bash
+python -m src.ui.gui
+```
+
+Ventana con pestañas **Búsqueda / Adversarial / Partida**, selector de escenario
+(desplegable o "Abrir archivo..."), tablero dibujado en un Canvas y panel de
+resultados por modo. Sin dependencias externas (usa `tkinter`).
+
+---
+
+### **OPCIÓN 4: Ejecutar todos los tests**
 
 ```bash
 python -m pytest tests/ -v
@@ -149,7 +161,7 @@ python -m pytest tests/ -v
 
 ---
 
-### **OPCIÓN 4: Ejecutar ejemplos específicos**
+### **OPCIÓN 5: Ejecutar ejemplos específicos**
 
 ```bash
 python scripts/casos_minimos.py           # Demuestra los 10 casos mínimos del enunciado
@@ -188,6 +200,8 @@ Proyecto/
 │       ├── smart_unit.py           # SmartUnit (A*)
 │       ├── tactical_unit.py        # TacticalUnit (Minimax)
 │       └── scenario_agents.py      # ⭐ Agentes integrados con JSON
+│   └── ui/
+│       └── gui.py                  # ⭐ Interfaz gráfica Tkinter (3 pestañas)
 ├── scenarios/
 │   ├── ejemplo_basico.json         # Mapa 4×4
 │   ├── terrenos_costosos.json      # Mapa 5×5 con costos variables

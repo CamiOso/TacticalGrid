@@ -85,7 +85,25 @@ python scripts/visualize_search.py        # visualizaciones HTML
 python scripts/interactive.py             # modo interactivo guiado paso a paso
 ```
 
-### 3.5 Ejecutar pruebas automatizadas
+### 3.5 Interfaz gráfica (Tkinter)
+
+```bash
+python -m src.ui.gui
+```
+
+Abre una ventana con tres pestañas —**Búsqueda**, **Adversarial** y **Partida**—.
+En la parte superior se elige el escenario (desplegable de `scenarios/` o "Abrir
+archivo..."), se dibuja el tablero y cada pestaña ejecuta su modo:
+
+- **Búsqueda:** elige algoritmo (BFS/DFS/UCS/A*/Beam), heurística y ancho `k`, y
+  dibuja el camino encontrado con sus métricas.
+- **Adversarial:** elige Minimax o alfa-beta y profundidad, y muestra la acción
+  seleccionada con sus métricas.
+- **Partida:** elige profundidad y simula la partida turno a turno.
+
+No requiere dependencias externas: usa el `tkinter` de la biblioteca estándar.
+
+### 3.6 Ejecutar pruebas automatizadas
 
 ```bash
 python -m pytest tests/ -v
